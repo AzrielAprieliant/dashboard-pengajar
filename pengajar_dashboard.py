@@ -24,23 +24,26 @@ all_data = pd.concat([
 
 mata_ajar = st.selectbox("Pilih Mata Ajar", all_data['Mata Ajar'].unique())
 
-# Pastikan kolom Rata-Rata numeric
+# Pastikan Rata-Rata numeric
 all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
 
-# Filter data hanya untuk mata ajar terpilih
+# Filter sesuai mata ajar
 filtered = all_data[all_data['Mata Ajar'] == mata_ajar]
 
 # Hitung rata-rata per instruktur & tahun
 pivot = filtered.groupby(['Tahun', 'Instruktur'])['Rata-Rata'].mean().reset_index()
 
-# Tambahkan Rank per tahun
+# Buang baris yang Rata-Rata NaN sebelum ranking
+pivot = pivot.dropna(subset=['Rata-Rata'])
+
+# Tambahkan kolom Rank per tahun
 pivot['Rank'] = pivot.groupby('Tahun')['Rata-Rata'].rank(method='first', ascending=False).astype(int)
 
-# Tampilkan tabel yang ada kolom Tahun
+# Tampilkan tabel
 st.write(f"Nilai rata-rata pengajar untuk mata ajar: {mata_ajar} (semua tahun)")
 st.dataframe(pivot.sort_values(['Tahun', 'Rank']))
 
-# Buat grafik: nilai tertinggi per tahun
+# Grafik: nilai tertinggi per tahun
 pivot_max = pivot.groupby('Tahun')['Rata-Rata'].max().reset_index()
 
 fig, ax = plt.subplots()
