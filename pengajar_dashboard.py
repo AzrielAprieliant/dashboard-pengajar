@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-st.title("Dashboard Pengajar dengan Nilai Tertinggi (dengan Nama Diklat)")
+st.title("Dashboard Pengajar dengan Nilai Tertinggi")
 
 file = "Data Instruktur.xlsx"
 
