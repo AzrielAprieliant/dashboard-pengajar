@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 
-st.title("Dashboard Pengajar dengan Nilai Tertinggi")
+st.title("Dashboard Pengajar dengan Nilai Tertinggi (Dengan Tahun)")
 
 file = "Data Instruktur.xlsx"
 
@@ -27,7 +27,7 @@ mata_ajar = st.selectbox("Pilih Mata Ajar", all_data['Mata Ajar'].unique())
 # Pastikan kolom Rata-Rata numeric
 all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
 
-# Filter data untuk mata ajar terpilih
+# Filter data hanya untuk mata ajar terpilih
 filtered = all_data[all_data['Mata Ajar'] == mata_ajar]
 
 # Hitung rata-rata per instruktur & tahun
@@ -36,15 +36,18 @@ pivot = filtered.groupby(['Tahun', 'Instruktur'])['Rata-Rata'].mean().reset_inde
 # Tambahkan Rank per tahun
 pivot['Rank'] = pivot.groupby('Tahun')['Rata-Rata'].rank(method='first', ascending=False).astype(int)
 
-# Tampilkan tabel
-st.write(f"Nilai rata-rata pengajar untuk mata ajar: {mata_ajar} (per tahun)")
+# Tampilkan tabel yang ada kolom Tahun
+st.write(f"Nilai rata-rata pengajar untuk mata ajar: {mata_ajar} (semua tahun)")
 st.dataframe(pivot.sort_values(['Tahun', 'Rank']))
 
-# Buat grafik: rata-rata tertinggi per tahun
+# Buat grafik: nilai tertinggi per tahun
 pivot_max = pivot.groupby('Tahun')['Rata-Rata'].max().reset_index()
 
 fig, ax = plt.subplots()
 ax.plot(pivot_max['Tahun'], pivot_max['Rata-Rata'], marker='o', color='skyblue')
 ax.set_title(f"Nilai Tertinggi per Tahun untuk {mata_ajar}")
 ax.set_xlabel("Tahun")
-ax.set_ylabel("Nilai T
+ax.set_ylabel("Nilai Tertinggi")
+ax.grid(True)
+
+st.pyplot(fig)
