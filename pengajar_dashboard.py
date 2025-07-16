@@ -31,11 +31,12 @@ filtered = all_data[all_data['Mata Ajar'] == mata_ajar]
 # Pastikan kolom Rata-Rata bertipe numeric
 filtered['Rata-Rata'] = pd.to_numeric(filtered['Rata-Rata'], errors='coerce')
 
-# Hitung rata-rata per instruktur
+# Hitung rata-rata per instruktur & urutkan
 pivot = filtered.groupby('Instruktur')['Rata-Rata'].mean().reset_index()
+pivot_sorted = pivot.sort_values(by='Rata-Rata', ascending=False).reset_index(drop=True)
 
-# Urutkan dari nilai tertinggi
-pivot_sorted = pivot.sort_values(by='Rata-Rata', ascending=False)
+# Tambahkan kolom Rank
+pivot_sorted.insert(0, 'Rank', range(1, len(pivot_sorted) + 1))
 
 # Tampilkan hasil
 st.write(f"Pengajar dengan nilai rata-rata tertinggi untuk mata ajar: {mata_ajar}")
