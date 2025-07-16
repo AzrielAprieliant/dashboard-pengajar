@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-st.title("Dashboard Pengajar dengan Nilai Tertinggi (Tanpa Dropdown Tahun)")
+st.title("Dashboard Pengajar dengan Nilai Tertinggi")
 
 # Baca file Excel
 file = "Data Instruktur.xlsx"
