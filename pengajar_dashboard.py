@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import matplotlib.pyplot as plt
 
 st.title("Dashboard Pengajar dengan Nilai Tertinggi")
 
@@ -22,14 +23,28 @@ all_data = pd.concat([
 ], ignore_index=True)
 
 mata_ajar = st.selectbox("Pilih Mata Ajar", all_data['Mata Ajar'].unique())
-tahun = st.selectbox("Pilih Tahun", sorted(all_data['Tahun'].unique(), reverse=True))
 
-filtered = all_data[(all_data['Mata Ajar'] == mata_ajar) & (all_data['Tahun'] == tahun)]
-filtered['Rata-Rata'] = pd.to_numeric(filtered['Rata-Rata'], errors='coerce')
+# Pastikan kolom Rata-Rata numeric
+all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
 
-pivot = filtered.groupby('Instruktur')['Rata-Rata'].mean().reset_index()
-pivot_sorted = pivot.sort_values(by='Rata-Rata', ascending=False).reset_index(drop=True)
-pivot_sorted.insert(0, 'Rank', range(1, len(pivot_sorted) + 1))
+# Filter data untuk mata ajar terpilih
+filtered = all_data[all_data['Mata Ajar'] == mata_ajar]
 
-st.write(f"Pengajar dengan nilai rata-rata tertinggi untuk mata ajar: {mata_ajar} pada tahun: {tahun}")
-st.dataframe(pivot_sorted)
+# Hitung rata-rata per instruktur & tahun
+pivot = filtered.groupby(['Tahun', 'Instruktur'])['Rata-Rata'].mean().reset_index()
+
+# Tambahkan Rank per tahun
+pivot['Rank'] = pivot.groupby('Tahun')['Rata-Rata'].rank(method='first', ascending=False).astype(int)
+
+# Tampilkan tabel
+st.write(f"Nilai rata-rata pengajar untuk mata ajar: {mata_ajar} (per tahun)")
+st.dataframe(pivot.sort_values(['Tahun', 'Rank']))
+
+# Buat grafik: rata-rata tertinggi per tahun
+pivot_max = pivot.groupby('Tahun')['Rata-Rata'].max().reset_index()
+
+fig, ax = plt.subplots()
+ax.plot(pivot_max['Tahun'], pivot_max['Rata-Rata'], marker='o', color='skyblue')
+ax.set_title(f"Nilai Tertinggi per Tahun untuk {mata_ajar}")
+ax.set_xlabel("Tahun")
+ax.set_ylabel("Nilai T
