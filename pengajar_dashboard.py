@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-st.title("Dashboard Pengajar dengan Nilai Tertinggi (Nama Diklat & Mata Ajar)")
+st.title("Dashboard Pengajar dengan Nilai Tertinggi")
 
 # === 1. Baca data dari file Excel ===
 file = "Data Instruktur.xlsx"
