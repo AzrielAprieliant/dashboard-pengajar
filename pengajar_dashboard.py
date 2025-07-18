@@ -1,5 +1,8 @@
 import pandas as pd
 import streamlit as st
+import altair as alt
+
+# === gaya Tampilan (CSS) ===
 
 st.title("Pengajar dengan Nilai Tertinggi")
 
