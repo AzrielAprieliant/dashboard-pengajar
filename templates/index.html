@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard Pengajar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+            max-width: 800px;
+            margin: auto;
+        }
+        select, button {
+            padding: 6px;
+            margin: 10px 5px 10px 0;
+            font-size: 14px;
+            width: 100%;
+            max-width: 300px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid #aaa;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #eee;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dashboard Pengajar</h1>
+    
+    <form method="get">
+        <label>Nama Diklat:
+            <select name="diklat" onchange="this.form.submit()" required>
+                <option value="">-- Pilih --</option>
+                {% for d in diklat_options %}
+                <option value="{{ d }}" {% if d == diklat_terpilih %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+        </label><br>
+
+        <label>Mata Ajar:
+            <select name="mata_ajar" onchange="this.form.submit()">
+                <option value="">-- Pilih --</option>
+                {% for m in mata_ajar_options %}
+                <option value="{{ m }}" {% if m == mata_ajar_terpilih %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+        </label>
+    </form>
+
+    {% if results is not none %}
+    <h2>Hasil</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Tahun</th>
+                <th>Rank</th>
+                <th>Instruktur</th>
+                <th>Nilai</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in results.itertuples() %}
+            <tr>
+                <td>{{ row.Tahun }}</td>
+                <td>{{ row.Rank }}</td>
+                <td>{{ row.Instruktur }}</td>
+                <td>{{ "%.2f"|format(row.Nilai) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</body>
+</html>
