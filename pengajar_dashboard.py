@@ -53,4 +53,4 @@ pivot_sorted['Rank'] = pivot_sorted.groupby('Tahun')['Rata-Rata'].rank(method='f
 
 # === 6. Tampilkan hasil ===
 st.write(f"Pengajar dengan nilai rata-rata tertinggi untuk Diklat: **{nama_diklat}**, Mata Ajar: **{mata_ajar}**")
-st.dataframe(pivot_sorted[['Tahun', 'Rank', 'Instruktur', 'Rata-Rata Nilai']])
+st.dataframe(pivot_sorted[['Tahun', 'Rank', 'Instruktur', 'Rata-Rata']])
