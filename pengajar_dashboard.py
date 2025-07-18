@@ -51,6 +51,9 @@ pivot_sorted = pivot.sort_values(by=['Tahun', 'Rata-Rata'], ascending=[False, Fa
 # Tambahkan kolom Rank per Tahun
 pivot_sorted['Rank'] = pivot_sorted.groupby('Tahun')['Rata-Rata'].rank(method='first', ascending=False).fillna(0).astype(int)
 
+# Ganti nama kolom jadi 'Rata-Rata' jadi 'nilai'
+pivot_sorted = pivot_sorted.rename(columns={'Rata-Rata : 'Nilai})
+
 # === 6. Tampilkan hasil ===
 st.write(f"Pengajar dengan nilai rata-rata tertinggi untuk Diklat: **{nama_diklat}**, Mata Ajar: **{mata_ajar}**")
-st.dataframe(pivot_sorted[['Tahun', 'Rank', 'Instruktur', 'Rata-Rata']])
+st.dataframe(pivot_sorted[['Tahun', 'Rank', 'Instruktur', 'Nilai']])
