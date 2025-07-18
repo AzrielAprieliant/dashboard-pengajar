@@ -1,31 +1,11 @@
 import pandas as pd
 import streamlit as st
 
-# === CSS Style: kecilkan lebar ===
-st.markdown("""
-    <style>
-    .main-title {
-        font-size:30px;
-        font-weight:bold;
-        color:#00BFFF;
-        text-align:center;
-        margin-bottom: 0.5em;
-    }
-    .sub-title {
-        font-size:14px;
-        font-style:italic;
-        color:#888888;
-        text-align:center;
-        margin-bottom:1.5em;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# === SETUP TAMPILAN LEBIH KECIL ===
+st.set_page_config(page_title="Dashboard Pengajar", layout="centered")
+st.title("📊 Pengajar dengan Nilai Tertinggi")
 
-# === Judul ===
-st.markdown('<div class="main-title">📊 Dashboard Pengajar Terbaik</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Filter berdasarkan Diklat & Mata Ajar — Penilaian 2023–2025</div>', unsafe_allow_html=True)
-
-# === Load Data ===
+# === BACA DATA EXCEL ===
 file = "Data Instruktur.xlsx"
 
 sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
@@ -38,48 +18,56 @@ sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
 sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
 sheet_2023["Tahun"] = 2023
 
+# Gabung semua data
 all_data = pd.concat([
     sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
     sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
-    sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
+    sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]]
 ], ignore_index=True)
 
-all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
+# === BERSIHKAN DATA ===
+all_data["Rata-Rata"] = pd.to_numeric(all_data["Rata-Rata"], errors="coerce")
 
-# === Layout dropdown sempit agar compact ===
-col1, col2 = st.columns([1, 1])  # Dua kolom sejajar
+for col in ["Instruktur", "Mata Ajar", "Nama Diklat"]:
+    all_data[col] = all_data[col].astype(str).str.strip().str.replace("\xa0", " ", regex=False)
 
+# === DROPDOWN 1: Nama Diklat ===
+unique_diklat = sorted(all_data["Nama Diklat"].dropna().unique())
+
+col1, col2 = st.columns([1, 1])
 with col1:
     nama_diklat = st.selectbox(
         "📚 Pilih Nama Diklat",
-        sorted(all_data["Nama Diklat"].dropna().unique()),
-        key="diklat",
+        options=unique_diklat,
+        key="select_diklat"
     )
 
 filtered_diklat = all_data[all_data["Nama Diklat"] == nama_diklat]
 
+# === DROPDOWN 2: Mata Ajar ===
+filtered_mata_ajar = sorted(filtered_diklat["Mata Ajar"].dropna().unique())
 with col2:
     mata_ajar = st.selectbox(
         "🧠 Pilih Mata Ajar",
-        sorted(filtered_diklat["Mata Ajar"].dropna().unique()),
-        key="ajar",
+        options=filtered_mata_ajar,
+        key="select_mata_ajar"
     )
 
+# === FILTER AKHIR ===
 filtered = filtered_diklat[filtered_diklat["Mata Ajar"] == mata_ajar]
 
-# === Ranking ===
-pivot = (
-    filtered.groupby(["Tahun", "Instruktur"])["Rata-Rata"]
-    .mean()
-    .reset_index()
-    .dropna(subset=["Rata-Rata"])
-)
+# === HITUNG RATA-RATA PER INSTRUKTUR PER TAHUN ===
+pivot = filtered.groupby(["Tahun", "Instruktur"])["Rata-Rata"].mean().reset_index()
+pivot = pivot.dropna(subset=["Rata-Rata"])
 
 pivot_sorted = pivot.sort_values(by=["Tahun", "Rata-Rata"], ascending=[False, False]).reset_index(drop=True)
-pivot_sorted["Rank"] = pivot_sorted.groupby("Tahun")["Rata-Rata"].rank(method="first", ascending=False).astype(int)
+pivot_sorted["Rank"] = pivot_sorted.groupby("Tahun")["Rata-Rata"].rank(method="first", ascending=False).fillna(0).astype(int)
+
+# === GANTI NAMA KOLOM & TAMPILKAN ===
 pivot_sorted = pivot_sorted.rename(columns={"Rata-Rata": "Nilai"})
 
-# === Output ===
-st.markdown("---")
-st.markdown(f"### 🏆 Pengajar terbaik untuk: **{nama_diklat}** — *{mata_ajar}*")
-st.dataframe(pivot_sorted[["Tahun", "Rank", "Instruktur", "Nilai"]], use_container_width=True)
+st.markdown(f"### 📈 Hasil untuk:\n**Nama Diklat:** _{nama_diklat}_  \n**Mata Ajar:** _{mata_ajar}_")
+st.dataframe(
+    pivot_sorted[["Tahun", "Rank", "Instruktur", "Nilai"]],
+    use_container_width=True
+)
