@@ -69,18 +69,3 @@ pivot_sorted = pivot_sorted.rename(columns={'Rata-Rata': 'Nilai'})
 st.markdown("---")
 st.markdown(f"### 🏆 Pengajar terbaik untuk: **{nama_diklat}** — *{mata_ajar}*")
 st.dataframe(pivot_sorted[['Tahun', 'Rank', 'Instruktur', 'Nilai']], use_container_width=True)
-
-# === 6. Tampilkan Grafik ===
-st.markdown("### 📈 Grafik Nilai Rata-rata per Tahun")
-
-chart = alt.Chart(pivot_sorted).mark_bar().encode(
-    x=alt.X('Tahun:O', title='Tahun'),
-    y=alt.Y('Nilai:Q', title='Nilai Rata-Rata'),
-    color='Instruktur:N',
-    tooltip=['Instruktur', 'Nilai', 'Tahun']
-).properties(
-    width=700,
-    height=400
-)
-
-st.altair_chart(chart, use_container_width=True)
