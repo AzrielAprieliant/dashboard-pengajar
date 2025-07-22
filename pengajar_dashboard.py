@@ -5,7 +5,7 @@ st.set_page_config(page_title="📚 Pengelompokan Nama Diklat", layout="wide")
 st.title("📚 Pengelompokan Nama Diklat Otomatis")
 
 # === BACA FILE ===
-file = "Data Instruktur.xlsx"
+file = "Data Instruktur asli.xlsx"
 
 sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
 sheet_2025["Tahun"] = 2025
