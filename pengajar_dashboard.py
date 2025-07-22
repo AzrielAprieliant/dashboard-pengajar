@@ -1,65 +1,52 @@
 import streamlit as st
 import pandas as pd
+from collections import defaultdict
 
-st.set_page_config(page_title="📚 Pengelompokan Nama Diklat", layout="wide")
-st.title("📚 Pengelompokan Nama Diklat Otomatis")
+st.set_page_config(page_title="Pengelompokan Nama Diklat", page_icon="📚", layout="wide")
 
-# === BACA FILE ===
-file = "Data Instruktur asli.xlsx"
+st.markdown("<h1 style='text-align: center;'>📚 Pengelompokan Nama Diklat Otomatis</h1>", unsafe_allow_html=True)
 
-sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
-sheet_2025["Tahun"] = 2025
+# Upload file Excel
+file = st.file_uploader("📂 Upload file Excel berisi nama diklat", type=["xlsx"])
 
-sheet_2024 = pd.read_excel(file, sheet_name="Penilaian 2024")
-sheet_2024["Tahun"] = 2024
+if file:
+    try:
+        # Baca sheet tertentu (ubah sesuai kebutuhan)
+        df = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
 
-sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
-sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
-sheet_2023["Tahun"] = 2023
+        # Pastikan kolom 'Nama Diklat' ada
+        if 'Nama Diklat' not in df.columns:
+            st.error("❌ Kolom 'Nama Diklat' tidak ditemukan di Excel.")
+        else:
+            # Ambil data unik, hapus NaN
+            nama_diklat = df['Nama Diklat'].dropna().unique()
 
-# === GABUNGKAN SEMUA DATA ===
-df = pd.concat([
-    sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
-    sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
-    sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]]
-], ignore_index=True)
+            # Fungsi untuk ambil awalan 4 kata (boleh ubah ke 3 jika perlu)
+            def ambil_awalan(text, max_kata=4):
+                return " ".join(text.split()[:max_kata]).strip()
 
-# === BERSIHIN ===
-df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
-for col in ["Instruktur", "Mata Ajar", "Nama Diklat"]:
-    df[col] = df[col].astype(str).str.strip().str.replace("\xa0", " ", regex=False)
+            # Kelompokkan berdasarkan awalan
+            kelompok = defaultdict(list)
+            for nama in nama_diklat:
+                kunci = ambil_awalan(nama)
+                kelompok[kunci].append(nama)
 
-# === BUAT KOLOM AWALAN UNTUK PENGELOMPOKAN ===
-df["Awalan"] = df["Nama Diklat"].str.extract(r'^(.{1,40})')
-# Hitung jumlah per awalan
-awalan_counts = df["Awalan"].value_counts()
-# Filter hanya yang muncul lebih dari 1
-df = df[df["Awalan"].isin(awalan_counts[awalan_counts > 1].index)]
+            # Hanya ambil kelompok yang terdiri dari lebih dari 1 item (biar gak acak)
+            kelompok_terfilter = {k: v for k, v in kelompok.items() if len(v) > 1}
 
-# === DROPDOWN PERTAMA: PILIH KELOMPOK DIKLAT ===
-pilihan_kelompok = sorted(df["Awalan"].unique())
-kelompok = st.selectbox("📂 Pilih Kelompok Nama Diklat", pilihan_kelompok)
+            if kelompok_terfilter:
+                # Dropdown pilih kelompok
+                st.markdown("### 📁 Pilih Kelompok Nama Diklat")
+                pilihan_kelompok = list(kelompok_terfilter.keys())
+                dipilih = st.selectbox("", pilihan_kelompok)
 
-df_kelompok = df[df["Awalan"] == kelompok]
-
-# === DROPDOWN KEDUA: PILIH MATA AJAR ===
-pilihan_mata_ajar = sorted(df_kelompok["Mata Ajar"].unique())
-mata_ajar = st.selectbox("🧠 Pilih Mata Ajar", pilihan_mata_ajar)
-
-# === FILTER FINAL ===
-filtered = df_kelompok[df_kelompok["Mata Ajar"] == mata_ajar]
-
-# === HITUNG RANKING PER INSTRUKTUR ===
-pivot = filtered.groupby(["Tahun", "Instruktur"])["Rata-Rata"].mean().reset_index()
-pivot = pivot.dropna(subset=["Rata-Rata"])
-pivot = pivot.sort_values(by=["Tahun", "Rata-Rata"], ascending=[False, False]).reset_index(drop=True)
-pivot["Rank"] = pivot.groupby("Tahun")["Rata-Rata"].rank(method="first", ascending=False).astype(int)
-
-# === TAMPILKAN ===
-pivot = pivot.rename(columns={"Rata-Rata": "Nilai"})
-
-st.markdown(f"### 📈 Hasil untuk:\n**Kelompok Nama Diklat:** _{kelompok}_  \n**Mata Ajar:** _{mata_ajar}_")
-st.dataframe(
-    pivot[["Tahun", "Rank", "Instruktur", "Nilai"]],
-    use_container_width=True
-)
+                # Tampilkan hasil
+                st.markdown("### 📄 Daftar Nama Diklat dalam Kelompok:")
+                for nama in kelompok_terfilter[dipilih]:
+                    st.markdown(f"- {nama}")
+            else:
+                st.info("⚠️ Tidak ditemukan kelompok nama diklat yang memiliki awalan yang sama.")
+    except Exception as e:
+        st.error(f"Terjadi error saat membaca file: {e}")
+else:
+    st.info("⬆️ Silakan upload file Excel terlebih dahulu.")
