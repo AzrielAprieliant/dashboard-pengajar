@@ -7,7 +7,7 @@ st.set_page_config(page_title="Pengelompokan Nama Diklat", page_icon="📚", lay
 st.markdown("<h1 style='text-align: center;'>📚 Pengelompokan Nama Diklat Otomatis</h1>", unsafe_allow_html=True)
 
 # Upload file Excel
-file = Data Instruktur asli.xlsx
+file = st.file_uploader("📂 Upload file Excel berisi nama diklat", type=["xlsx"])
 
 if file:
     try:
