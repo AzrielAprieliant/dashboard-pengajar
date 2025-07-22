@@ -2,51 +2,62 @@ import streamlit as st
 import pandas as pd
 from collections import defaultdict
 
-st.set_page_config(page_title="Pengelompokan Nama Diklat", page_icon="📚", layout="wide")
+st.set_page_config(page_title="📚 Pengelompokan Nama Diklat Otomatis", layout="centered")
 
-st.markdown("<h1 style='text-align: center;'>📚 Pengelompokan Nama Diklat Otomatis</h1>", unsafe_allow_html=True)
+st.title("📚 Pengelompokan Nama Diklat Otomatis")
 
 # Upload file Excel
-file = st.file_uploader("📂 Upload file Excel berisi nama diklat", type=["xlsx"])
+uploaded_file = st.file_uploader("📤 Upload File Excel", type=["xlsx"])
 
-if file:
+if uploaded_file:
+    # Baca sheet
     try:
-        # Baca sheet tertentu (ubah sesuai kebutuhan)
-        df = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
-
-        # Pastikan kolom 'Nama Diklat' ada
-        if 'Nama Diklat' not in df.columns:
-            st.error("❌ Kolom 'Nama Diklat' tidak ditemukan di Excel.")
-        else:
-            # Ambil data unik, hapus NaN
-            nama_diklat = df['Nama Diklat'].dropna().unique()
-
-            # Fungsi untuk ambil awalan 4 kata (boleh ubah ke 3 jika perlu)
-            def ambil_awalan(text, max_kata=4):
-                return " ".join(text.split()[:max_kata]).strip()
-
-            # Kelompokkan berdasarkan awalan
-            kelompok = defaultdict(list)
-            for nama in nama_diklat:
-                kunci = ambil_awalan(nama)
-                kelompok[kunci].append(nama)
-
-            # Hanya ambil kelompok yang terdiri dari lebih dari 1 item (biar gak acak)
-            kelompok_terfilter = {k: v for k, v in kelompok.items() if len(v) > 1}
-
-            if kelompok_terfilter:
-                # Dropdown pilih kelompok
-                st.markdown("### 📁 Pilih Kelompok Nama Diklat")
-                pilihan_kelompok = list(kelompok_terfilter.keys())
-                dipilih = st.selectbox("", pilihan_kelompok)
-
-                # Tampilkan hasil
-                st.markdown("### 📄 Daftar Nama Diklat dalam Kelompok:")
-                for nama in kelompok_terfilter[dipilih]:
-                    st.markdown(f"- {nama}")
-            else:
-                st.info("⚠️ Tidak ditemukan kelompok nama diklat yang memiliki awalan yang sama.")
+        df = pd.read_excel(uploaded_file, sheet_name="Penilaian Jan Jun 2025")
     except Exception as e:
-        st.error(f"Terjadi error saat membaca file: {e}")
+        st.error(f"Gagal membaca file: {e}")
+        st.stop()
+
+    # Drop baris kosong
+    df = df.dropna(subset=["Nama Diklat", "Nama Mata Ajar", "Nilai"])
+
+    # Ambil nama diklat unik
+    diklat_list = df["Nama Diklat"].dropna().unique()
+
+    # Fungsi grouping berdasarkan awalan
+    grouped_diklat = defaultdict(list)
+    for diklat in diklat_list:
+        prefix = diklat.split()[0]
+        grouped_diklat[prefix].append(diklat)
+
+    # Gabungkan hanya jika prefix muncul > 1
+    grouped_options = []
+    grouped_dict = {}
+    for prefix, diklats in grouped_diklat.items():
+        if len(diklats) > 1:
+            group_name = f"{prefix} - ({len(diklats)} diklat)"
+            grouped_options.append(group_name)
+            grouped_dict[group_name] = diklats
+        else:
+            grouped_options.extend(diklats)
+
+    # Pilih dari dropdown
+    st.subheader("📁 Pilih Kelompok Nama Diklat")
+    selected = st.selectbox("Pilih Kelompok Diklat", grouped_options)
+
+    # Ambil diklat terpilih
+    if selected in grouped_dict:
+        diklat_terpilih = grouped_dict[selected]
+    else:
+        diklat_terpilih = [selected]
+
+    # Filter data
+    filtered_df = df[df["Nama Diklat"].isin(diklat_terpilih)]
+
+    # Tampilkan data
+    st.markdown("### 📖 Detail Mata Ajar dan Nilai")
+    st.dataframe(
+        filtered_df[["Nama Diklat", "Nama Mata Ajar", "Nilai"]].sort_values(by=["Nama Diklat", "Nama Mata Ajar"])
+    )
+
 else:
-    st.info("⬆️ Silakan upload file Excel terlebih dahulu.")
+    st.warning("Silakan upload file Excel terlebih dahulu.")
