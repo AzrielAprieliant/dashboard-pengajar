@@ -1,10 +1,14 @@
 import pandas as pd
+import streamlit as st
 import re
 
-# === BACA FILE ===
+# === SETUP TAMPILAN ===
+st.set_page_config(page_title="Dashboard Pengajar", layout="centered")
+st.title("📊 Pengajar dengan Nilai Tertinggi")
+
+# === BACA DATA EXCEL ===
 file = "Data Instruktur asli.xlsx"
 
-# Baca tiap sheet dan beri label tahun
 sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
 sheet_2025["Tahun"] = 2025
 
@@ -12,45 +16,57 @@ sheet_2024 = pd.read_excel(file, sheet_name="Penilaian 2024")
 sheet_2024["Tahun"] = 2024
 
 sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
-sheet_2023 = sheet_2023.rename(columns={
-    "Instruktur /WI": "Instruktur",
-    "Rata2": "Rata-Rata"
-})
+sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
 sheet_2023["Tahun"] = 2023
 
-# Gabungkan semua data
-data = pd.concat([
+# Gabung semua data
+all_data = pd.concat([
     sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
     sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
-    sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
+    sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]]
 ], ignore_index=True)
 
-# === BERSIHIN DATA ===
+# === BERSIHKAN DATA ===
+all_data["Rata-Rata"] = pd.to_numeric(all_data["Rata-Rata"], errors="coerce")
 for col in ["Instruktur", "Mata Ajar", "Nama Diklat"]:
-    data[col] = data[col].astype(str).str.strip().str.replace("\xa0", " ", regex=False)
+    all_data[col] = all_data[col].astype(str).str.strip().str.replace("\xa0", " ", regex=False)
 
-data["Rata-Rata"] = pd.to_numeric(data["Rata-Rata"], errors="coerce")
+# === NORMALISASI KATEGORI DIKLAT ===
+def bersihkan_nama_diklat(nama):
+    nama = nama.upper().strip()
+    nama = re.split(r'[-(]', nama)[0]
+    nama = re.sub(r'\s+', ' ', nama)
+    return nama.strip()
 
-# === BUAT KOLOM: Grup Nama Diklat ===
-def ambil_awal(nama):
-    # Ambil sebelum tanda "-" atau "–" atau pisahkan per batch
-    if pd.isna(nama):
-        return ""
-    return re.split(r"\s*[-–]\s*", nama)[0].strip().lower()
+all_data["Kategori Diklat"] = all_data["Nama Diklat"].apply(bersihkan_nama_diklat)
 
-data["Grup Diklat"] = data["Nama Diklat"].apply(ambil_awal)
+# === DROPDOWN: KATEGORI DIKLAT ===
+unique_kategori = sorted(all_data["Kategori Diklat"].dropna().unique())
+col1, col2 = st.columns([1, 1])
 
-# === HITUNG RATA-RATA PER INSTRUKTUR PER GRUP PER TAHUN ===
-pivot = data.groupby(["Tahun", "Grup Diklat", "Instruktur"])["Rata-Rata"].mean().reset_index()
+with col1:
+    kategori_diklat = st.selectbox("📚 Pilih Kategori Diklat", options=unique_kategori)
+
+filtered_kategori = all_data[all_data["Kategori Diklat"] == kategori_diklat]
+
+# === DROPDOWN: MATA AJAR ===
+unique_mata_ajar = sorted(filtered_kategori["Mata Ajar"].dropna().unique())
+with col2:
+    mata_ajar = st.selectbox("🧠 Pilih Mata Ajar", options=unique_mata_ajar)
+
+filtered = filtered_kategori[filtered_kategori["Mata Ajar"] == mata_ajar]
+
+# === HITUNG RATA-RATA PER INSTRUKTUR PER TAHUN ===
+pivot = filtered.groupby(["Tahun", "Instruktur"])["Rata-Rata"].mean().reset_index()
 pivot = pivot.dropna(subset=["Rata-Rata"])
 
-# === HITUNG RANK PER TAHUN & PER GRUP ===
-pivot["Rank"] = pivot.groupby(["Tahun", "Grup Diklat"])["Rata-Rata"]\
-    .rank(method="first", ascending=False).astype(int)
+pivot_sorted = pivot.sort_values(by=["Tahun", "Rata-Rata"], ascending=[False, False]).reset_index(drop=True)
+pivot_sorted["Rank"] = pivot_sorted.groupby("Tahun")["Rata-Rata"].rank(method="first", ascending=False).fillna(0).astype(int)
+pivot_sorted = pivot_sorted.rename(columns={"Rata-Rata": "Nilai"})
 
-# === GANTI NAMA KOLOM UTAMA ===
-pivot = pivot.rename(columns={"Grup Diklat": "Nama Diklat", "Rata-Rata": "Nilai"})
-
-# === SIMPAN KE EXCEL ===
-pivot.to_excel("Output_Kelompok_Diklat.xlsx", index=False)
-print("✅ Berhasil disimpan ke Output_Kelompok_Diklat.xlsx")
+# === TAMPILKAN TABEL ===
+st.markdown(f"### 📈 Hasil untuk:\n**Kategori Diklat:** _{kategori_diklat}_  \n**Mata Ajar:** _{mata_ajar}_")
+st.dataframe(
+    pivot_sorted[["Tahun", "Rank", "Instruktur", "Nilai"]],
+    use_container_width=True
+)
