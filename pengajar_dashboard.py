@@ -20,7 +20,7 @@ df = pd.concat(df_list, ignore_index=True)
 
 # Pastikan kolom penting ada
 df.columns = df.columns.str.strip()
-required_cols = ["Nama Diklat", "Mata Ajar", "Nilai"]
+required_cols = ["Nama Diklat", "Mata Ajar", "Rata-Rata"]
 if not all(col in df.columns for col in required_cols):
     st.error(f"❌ File harus memiliki kolom: {required_cols}")
     st.stop()
@@ -39,7 +39,7 @@ grup_diklat = df["Awalan Diklat"].unique()
 dipilih = st.selectbox("📌 Pilih Grup Nama Diklat", sorted(grup_diklat))
 
 # Tampilkan data yang sesuai
-hasil = df[df["Awalan Diklat"] == dipilih][["Nama Diklat", "Nama Mata Ajar", "Nilai"]].sort_values("Nama Diklat")
+hasil = df[df["Awalan Diklat"] == dipilih][["Nama Diklat", " Mata Ajar", "Rata-Rata"]].sort_values("Nama Diklat")
 st.dataframe(hasil, use_container_width=True)
 
 # Tombol download
