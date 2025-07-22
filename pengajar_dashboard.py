@@ -1,47 +1,67 @@
 import streamlit as st
 import pandas as pd
+import os
 
-st.set_page_config(page_title="📚 Pengelompokan Nama Diklat Otomatis", layout="wide")
+st.set_page_config(page_title="📚 Pengelompokan Nama Diklat Otomatis")
 st.title("📚 Pengelompokan Nama Diklat Otomatis")
 
-# Langsung baca dari file lokal
-try:
-    all_sheets = pd.read_excel("Data Instruktur asli.xlsx", sheet_name=None)
-except FileNotFoundError:
-    st.error("❌ File 'Data Instruktur asli.xlsx' tidak ditemukan di folder ini.")
+# Baca semua sheet dari file Excel
+file_path = "Data Instruktur asli.xlsx"
+if not os.path.exists(file_path):
+    st.error(f"❌ File tidak ditemukan: {file_path}")
     st.stop()
 
-# Gabung semua sheet jadi satu dataframe
-df_list = []
-for sheet_name, df in all_sheets.items():
-    df["Sheet"] = sheet_name
-    df_list.append(df)
-df = pd.concat(df_list, ignore_index=True)
+# Gabungkan semua sheet
+xls = pd.ExcelFile(file_path)
+df_all = pd.concat([xls.parse(sheet) for sheet in xls.sheet_names], ignore_index=True)
+df = df_all.copy()
 
-# Pastikan kolom penting ada
+# Bersihkan dan standarize nama kolom
 df.columns = df.columns.str.strip()
-required_cols = ["Nama Diklat", "Mata Ajar", "Rata-Rata"]
-if not all(col in df.columns for col in required_cols):
-    st.error(f"❌ File harus memiliki kolom: {required_cols}")
+kolom_dibutuhkan = ["Nama Diklat", "Nama Mata Ajar", "Nilai"]
+if not all(kol in df.columns for kol in kolom_dibutuhkan):
+    st.error("❌ Kolom yang dibutuhkan tidak lengkap dalam file Excel. Harus ada 'Nama Diklat', 'Nama Mata Ajar', dan 'Nilai'")
     st.stop()
 
-# Hapus baris kosong
-df = df.dropna(subset=required_cols)
+# Hapus baris kosong dan pastikan nilai angka
+df = df.dropna(subset=kolom_dibutuhkan)
+df["Nilai"] = pd.to_numeric(df["Nilai"], errors="coerce")
+df = df.dropna(subset=["Nilai"])
 
-# Fungsi ambil 3 kata awal
-def ambil_awal(nama):
-    return " ".join(str(nama).strip().lower().split()[:3])
+# Buat kolom Awalan Diklat (untuk pengelompokan)
+df["Awalan Diklat"] = df["Nama Diklat"].str.extract(r"^(.+?)(?:\s|$)", expand=False)
 
-df["Awalan Diklat"] = df["Nama Diklat"].apply(ambil_awal)
+# Hitung rata-rata nilai per Nama Diklat dan Mata Ajar
+rata2 = df.groupby(["Nama Diklat", "Nama Mata Ajar"]).agg({"Nilai": "mean"}).reset_index()
+rata2 = rata2.rename(columns={"Nilai": "Rata-Rata"})
 
-# Tampilkan dropdown nama diklat (berdasarkan awalan)
-grup_diklat = df["Awalan Diklat"].unique()
-dipilih = st.selectbox("📌 Pilih Grup Nama Diklat", sorted(grup_diklat))
+# Gabungkan kembali dengan Awalan Diklat
+rata2 = rata2.merge(df[["Nama Diklat", "Awalan Diklat"]].drop_duplicates(), on="Nama Diklat", how="left")
 
-# Tampilkan data yang sesuai
-hasil = df[df["Awalan Diklat"] == dipilih][["Nama Diklat", " Mata Ajar", "Rata-Rata"]].sort_values("Nama Diklat")
+# Cari awalan diklat yang punya lebih dari satu nama diklat
+awalan_duplikat = rata2["Awalan Diklat"].value_counts()
+awalan_terpilih = awalan_duplikat[awalan_duplikat > 1].index.tolist()
+
+# Dropdown pengelompokan berdasarkan awalan nama
+dipilih = st.selectbox("🔠 Pilih Awalan Diklat", awalan_terpilih)
+
+# Filter berdasarkan awalan yang dipilih
+hasil = rata2[rata2["Awalan Diklat"] == dipilih]
+
+# Dropdown mata ajar
+mata_ajar_unik = hasil["Nama Mata Ajar"].unique().tolist()
+mata_ajar_pilih = st.selectbox("📘 Pilih Mata Ajar", ["Semua"] + mata_ajar_unik)
+
+if mata_ajar_pilih != "Semua":
+    hasil = hasil[hasil["Nama Mata Ajar"] == mata_ajar_pilih]
+
+# Urutkan berdasarkan Rata-Rata
+hasil = hasil.sort_values(by="Rata-Rata", ascending=False).reset_index(drop=True)
+
+# Tampilkan tabel akhir
+st.subheader("📊 Hasil Pengelompokan dan Ranking")
 st.dataframe(hasil, use_container_width=True)
 
-# Tombol download
+# Tombol unduh CSV
 csv = hasil.to_csv(index=False).encode("utf-8")
-st.download_button("⬇️ Download sebagai CSV", csv, file_name=f"{dipilih}_hasil.csv", mime="text/csv")
+st.download_button("⬇️ Download CSV", csv, file_name=f"hasil_{dipilih}.csv", mime="text/csv")
