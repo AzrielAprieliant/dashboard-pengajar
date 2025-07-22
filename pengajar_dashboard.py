@@ -1,63 +1,47 @@
 import streamlit as st
 import pandas as pd
-from collections import defaultdict
 
-st.set_page_config(page_title="📚 Pengelompokan Nama Diklat Otomatis", layout="centered")
-
+st.set_page_config(page_title="📚 Pengelompokan Nama Diklat Otomatis", layout="wide")
 st.title("📚 Pengelompokan Nama Diklat Otomatis")
 
-# Upload file Excel
-uploaded_file = st.file_uploader("📤 Upload File Excel", type=["xlsx"])
+# Langsung baca dari file lokal
+try:
+    all_sheets = pd.read_excel("Data Instruktur asli.xlsx", sheet_name=None)
+except FileNotFoundError:
+    st.error("❌ File 'Data Instruktur asli.xlsx' tidak ditemukan di folder ini.")
+    st.stop()
 
-if uploaded_file:
-    # Baca sheet
-    try:
-        df = pd.read_excel(uploaded_file, sheet_name="Penilaian Jan Jun 2025")
-    except Exception as e:
-        st.error(f"Gagal membaca file: {e}")
-        st.stop()
+# Gabung semua sheet jadi satu dataframe
+df_list = []
+for sheet_name, df in all_sheets.items():
+    df["Sheet"] = sheet_name
+    df_list.append(df)
+df = pd.concat(df_list, ignore_index=True)
 
-    # Drop baris kosong
-    df = df.dropna(subset=["Nama Diklat", "Nama Mata Ajar", "Nilai"])
+# Pastikan kolom penting ada
+df.columns = df.columns.str.strip()
+required_cols = ["Nama Diklat", "Nama Mata Ajar", "Nilai"]
+if not all(col in df.columns for col in required_cols):
+    st.error(f"❌ File harus memiliki kolom: {required_cols}")
+    st.stop()
 
-    # Ambil nama diklat unik
-    diklat_list = df["Nama Diklat"].dropna().unique()
+# Hapus baris kosong
+df = df.dropna(subset=required_cols)
 
-    # Fungsi grouping berdasarkan awalan
-    grouped_diklat = defaultdict(list)
-    for diklat in diklat_list:
-        prefix = diklat.split()[0]
-        grouped_diklat[prefix].append(diklat)
+# Fungsi ambil 3 kata awal
+def ambil_awal(nama):
+    return " ".join(str(nama).strip().lower().split()[:3])
 
-    # Gabungkan hanya jika prefix muncul > 1
-    grouped_options = []
-    grouped_dict = {}
-    for prefix, diklats in grouped_diklat.items():
-        if len(diklats) > 1:
-            group_name = f"{prefix} - ({len(diklats)} diklat)"
-            grouped_options.append(group_name)
-            grouped_dict[group_name] = diklats
-        else:
-            grouped_options.extend(diklats)
+df["Awalan Diklat"] = df["Nama Diklat"].apply(ambil_awal)
 
-    # Pilih dari dropdown
-    st.subheader("📁 Pilih Kelompok Nama Diklat")
-    selected = st.selectbox("Pilih Kelompok Diklat", grouped_options)
+# Tampilkan dropdown nama diklat (berdasarkan awalan)
+grup_diklat = df["Awalan Diklat"].unique()
+dipilih = st.selectbox("📌 Pilih Grup Nama Diklat", sorted(grup_diklat))
 
-    # Ambil diklat terpilih
-    if selected in grouped_dict:
-        diklat_terpilih = grouped_dict[selected]
-    else:
-        diklat_terpilih = [selected]
+# Tampilkan data yang sesuai
+hasil = df[df["Awalan Diklat"] == dipilih][["Nama Diklat", "Nama Mata Ajar", "Nilai"]].sort_values("Nama Diklat")
+st.dataframe(hasil, use_container_width=True)
 
-    # Filter data
-    filtered_df = df[df["Nama Diklat"].isin(diklat_terpilih)]
-
-    # Tampilkan data
-    st.markdown("### 📖 Detail Mata Ajar dan Nilai")
-    st.dataframe(
-        filtered_df[["Nama Diklat", "Nama Mata Ajar", "Nilai"]].sort_values(by=["Nama Diklat", "Nama Mata Ajar"])
-    )
-
-else:
-    st.warning("Silakan upload file Excel terlebih dahulu.")
+# Tombol download
+csv = hasil.to_csv(index=False).encode("utf-8")
+st.download_button("⬇️ Download sebagai CSV", csv, file_name=f"{dipilih}_hasil.csv", mime="text/csv")
