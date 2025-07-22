@@ -20,7 +20,7 @@ df = pd.concat(df_list, ignore_index=True)
 
 # Pastikan kolom penting ada
 df.columns = df.columns.str.strip()
-required_cols = ["Nama Diklat", "Nama Mata Ajar", "Nilai"]
+required_cols = ["Nama Diklat", "Mata Ajar", "Nilai"]
 if not all(col in df.columns for col in required_cols):
     st.error(f"❌ File harus memiliki kolom: {required_cols}")
     st.stop()
