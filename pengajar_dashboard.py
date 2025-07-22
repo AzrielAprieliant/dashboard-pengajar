@@ -34,7 +34,7 @@ def ambil_awalan_kalimat(nama, n_kata=4):
     # Ambil n kata pertama dari judul
     return ' '.join(nama.split()[:n_kata]).strip()
 
-df["Kelompok_Diklat"] = df["Nama Diklat"].apply(lambda x: ambil_awalan_kalimat(x, n_kata=4))
+df["Kelompok_Diklat"] = df["Nama Diklat"].apply(lambda x: ambil_awalan_kalimat(x, n_kata=3))
 
 # Gunakan kemiripan teks untuk gabung kelompok serupa
 kelompok_unik = df["Kelompok_Diklat"].unique()
@@ -57,6 +57,7 @@ filtered = df[df["Kelompok_Diklat"] == kelompok_terpilih]
 
 st.markdown(f"### 📋 Daftar Diklat dalam Kelompok: _{kelompok_terpilih}_")
 st.dataframe(
-    filtered.sort_values(by=["Tahun", "Rata-Rata"], ascending=[False, False]),
+    filtered[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]]
+    .sort_values(by=["Tahun", "Rata-Rata"], ascending=[False, False]),
     use_container_width=True
 )
