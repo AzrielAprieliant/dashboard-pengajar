@@ -17,38 +17,40 @@ sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
 sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
 sheet_2023['Tahun'] = 2023
 
+# Gabung semua data
 all_data = pd.concat([
     sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
     sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
     sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]]
 ], ignore_index=True)
 
+# Pastikan numerik
 all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
 
-# --- 2. Buat Cluster Berdasarkan Awalan 3 Kata dari Nama Diklat ---
-def ambil_awalan(nama, n=3):
-    return " ".join(str(nama).split()[:n]).lower()
+# --- 2. Buat kolom awalan 3 kata ---
+def get_awalan(diklat):
+    return " ".join(str(diklat).split()[:3]).strip().lower()
 
-all_data["Cluster Diklat"] = all_data["Nama Diklat"].apply(ambil_awalan)
+all_data["Awalan Diklat"] = all_data["Nama Diklat"].apply(get_awalan)
 
-# --- 3. Mapping Nama Cluster → Nama Tampilan ---
-# Bisa kamu sesuaikan di sini
-cluster_nama_mapping = {
-    "audit investigatif level": "Audit Investigatif",
-    "bimbingan teknis reviu": "Bimtek Reviu",
-    "pelatihan jabatan fungsional": "Pelatihan Fungsional"
-}
-# Default: kapitalisasi otomatis kalau tidak ada di mapping
-all_data["Nama Diklat Gabung"] = all_data["Cluster Diklat"].map(cluster_nama_mapping).fillna(all_data["Cluster Diklat"].str.title())
+# Hitung frekuensi awalan
+awalan_counts = all_data["Awalan Diklat"].value_counts()
 
-# --- 4. Dropdown Pilih Nama Diklat Gabungan ---
-nama_diklat_display = st.selectbox("Pilih Nama Diklat", sorted(all_data["Nama Diklat Gabung"].unique()))
+# --- 3. Tentukan 'Nama Diklat Gabungan' ---
+def gabung_diklat(row):
+    awalan = row["Awalan Diklat"]
+    if awalan_counts[awalan] > 1:
+        return awalan.title()  # Gunakan awalan sebagai nama gabungan
+    else:
+        return row["Nama Diklat"]  # Biarkan asli
 
-# Ambil cluster yang sesuai
-cluster_terpilih = all_data[all_data["Nama Diklat Gabung"] == nama_diklat_display]["Cluster Diklat"].iloc[0]
+all_data["Nama Diklat Gabungan"] = all_data.apply(gabung_diklat, axis=1)
 
-# Filter berdasarkan cluster diklat
-filtered_cluster = all_data[all_data["Cluster Diklat"] == cluster_terpilih]
+# --- 4. Dropdown Pilih Nama Diklat ---
+nama_diklat_display = st.selectbox("Pilih Nama Diklat", sorted(all_data["Nama Diklat Gabungan"].unique()))
+
+# Filter berdasarkan nama diklat gabungan
+filtered_cluster = all_data[all_data["Nama Diklat Gabungan"] == nama_diklat_display]
 
 # --- 5. Dropdown Mata Ajar ---
 mata_ajar = st.selectbox("Pilih Mata Ajar", sorted(filtered_cluster['Mata Ajar'].dropna().unique()))
@@ -64,8 +66,7 @@ pivot = pivot.rename(columns={'Rata-Rata': 'Nilai'})
 # --- 7. Tampilkan Hasil ---
 st.markdown(f"""
 #### 📘 Ranking Instruktur  
-**Diklat Gabungan:** {nama_diklat_display}  
+**Diklat:** {nama_diklat_display}  
 **Mata Ajar:** {mata_ajar}
 """)
-
 st.dataframe(pivot[['Tahun', 'Rank', 'Instruktur', 'Nilai']], use_container_width=True)
