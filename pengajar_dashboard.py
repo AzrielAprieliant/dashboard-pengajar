@@ -1,67 +1,63 @@
 import streamlit as st
 import pandas as pd
-import os
+import re
 
-st.set_page_config(page_title="📚 Pengelompokan Nama Diklat Otomatis")
-st.title("📚 Pengelompokan Nama Diklat Otomatis")
+# Fungsi bantu
+def get_awal_diklat(nama, num_kata=3):
+    words = str(nama).split()
+    return ' '.join(words[:num_kata]).strip().lower()
 
-# Baca semua sheet dari file Excel
-file_path = "Data Instruktur asli.xlsx"
-if not os.path.exists(file_path):
-    st.error(f"❌ File tidak ditemukan: {file_path}")
-    st.stop()
+def extract_year(sheet_name):
+    match = re.search(r'20\d{2}', str(sheet_name))
+    return match.group() if match else '2025'
 
-# Gabungkan semua sheet
-xls = pd.ExcelFile(file_path)
-df_all = pd.concat([xls.parse(sheet) for sheet in xls.sheet_names], ignore_index=True)
-df = df_all.copy()
+# ================== STREAMLIT APP ==================
 
-# Bersihkan dan standarize nama kolom
-df.columns = df.columns.str.strip()
-kolom_dibutuhkan = ["Nama Diklat", "Nama Mata Ajar", "Nilai"]
-if not all(kol in df.columns for kol in kolom_dibutuhkan):
-    st.error("❌ Kolom yang dibutuhkan tidak lengkap dalam file Excel. Harus ada 'Nama Diklat', 'Nama Mata Ajar', dan 'Nilai'")
-    st.stop()
+st.title("📊 Dashboard Instruktur Nilai Tertinggi")
 
-# Hapus baris kosong dan pastikan nilai angka
-df = df.dropna(subset=kolom_dibutuhkan)
-df["Nilai"] = pd.to_numeric(df["Nilai"], errors="coerce")
-df = df.dropna(subset=["Nilai"])
+# URL file dari GitHub (ubah ini!)
+github_excel_url = "https://raw.githubusercontent.com/username/repo/main/Data%20Instruktur%20asli.xlsx"
 
-# Buat kolom Awalan Diklat (untuk pengelompokan)
-df["Awalan Diklat"] = df["Nama Diklat"].str.extract(r"^(.+?)(?:\s|$)", expand=False)
+# Baca file dari GitHub
+try:
+    xls = pd.ExcelFile(github_excel_url)
+    all_data = []
+    for sheet in xls.sheet_names:
+        df = xls.parse(sheet)
+        df['Sheet Name'] = sheet
+        all_data.append(df)
 
-# Hitung rata-rata nilai per Nama Diklat dan Mata Ajar
-rata2 = df.groupby(["Nama Diklat", "Nama Mata Ajar"]).agg({"Nilai": "mean"}).reset_index()
-rata2 = rata2.rename(columns={"Nilai": "Rata-Rata"})
+    combined_df = pd.concat(all_data, ignore_index=True)
 
-# Gabungkan kembali dengan Awalan Diklat
-rata2 = rata2.merge(df[["Nama Diklat", "Awalan Diklat"]].drop_duplicates(), on="Nama Diklat", how="left")
+    # Ambil kolom penting
+    selected_cols = ['Nama Diklat', 'Mata Ajar', 'Instruktur', 'Rata-Rata', 'Sheet Name']
+    df = combined_df[selected_cols].copy()
+    df = df.dropna(subset=['Nama Diklat', 'Instruktur', 'Rata-Rata'])
 
-# Cari awalan diklat yang punya lebih dari satu nama diklat
-awalan_duplikat = rata2["Awalan Diklat"].value_counts()
-awalan_terpilih = awalan_duplikat[awalan_duplikat > 1].index.tolist()
+    # Cluster berdasarkan awalan diklat
+    df['Cluster Diklat'] = df['Nama Diklat'].apply(get_awal_diklat)
+    df['Tahun'] = df['Sheet Name'].apply(extract_year)
 
-# Dropdown pengelompokan berdasarkan awalan nama
-dipilih = st.selectbox("🔠 Pilih Awalan Diklat", awalan_terpilih)
+    # Dropdown 1: Cluster Diklat
+    cluster_options = sorted(df['Cluster Diklat'].unique())
+    selected_cluster = st.selectbox("Pilih Cluster Diklat", cluster_options)
 
-# Filter berdasarkan awalan yang dipilih
-hasil = rata2[rata2["Awalan Diklat"] == dipilih]
+    if selected_cluster:
+        df_filtered_cluster = df[df['Cluster Diklat'] == selected_cluster]
 
-# Dropdown mata ajar
-mata_ajar_unik = hasil["Nama Mata Ajar"].unique().tolist()
-mata_ajar_pilih = st.selectbox("📘 Pilih Mata Ajar", ["Semua"] + mata_ajar_unik)
+        # Dropdown 2: Mata Ajar
+        mata_ajar_options = sorted(df_filtered_cluster['Mata Ajar'].dropna().unique())
+        selected_mata_ajar = st.selectbox("Pilih Mata Ajar", mata_ajar_options)
 
-if mata_ajar_pilih != "Semua":
-    hasil = hasil[hasil["Nama Mata Ajar"] == mata_ajar_pilih]
+        if selected_mata_ajar:
+            final_df = df_filtered_cluster[df_filtered_cluster['Mata Ajar'] == selected_mata_ajar]
 
-# Urutkan berdasarkan Rata-Rata
-hasil = hasil.sort_values(by="Rata-Rata", ascending=False).reset_index(drop=True)
+            # Tampilkan ranking
+            st.subheader("🏆 Ranking Instruktur")
+            ranking = final_df[['Instruktur', 'Rata-Rata', 'Tahun']].dropna()
+            ranking = ranking.sort_values(by='Rata-Rata', ascending=False).reset_index(drop=True)
+            ranking.index += 1
+            st.dataframe(ranking)
 
-# Tampilkan tabel akhir
-st.subheader("📊 Hasil Pengelompokan dan Ranking")
-st.dataframe(hasil, use_container_width=True)
-
-# Tombol unduh CSV
-csv = hasil.to_csv(index=False).encode("utf-8")
-st.download_button("⬇️ Download CSV", csv, file_name=f"hasil_{dipilih}.csv", mime="text/csv")
+except Exception as e:
+    st.error(f"Gagal membaca file dari GitHub. Error: {e}")
