@@ -29,7 +29,7 @@ all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
 
 # --- 2. Buat kolom awalan 3 kata ---
 def get_awalan(diklat):
-    return " ".join(str(diklat).split()[:5]).strip().lower()
+    return " ".join(str(diklat).split()[:4]).strip().lower()
 
 all_data["Awalan Diklat"] = all_data["Nama Diklat"].apply(get_awalan)
 
