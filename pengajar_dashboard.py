@@ -1,9 +1,11 @@
-import streamlit as st
 import pandas as pd
-from io import BytesIO
+import streamlit as st
 import requests
+from io import BytesIO
+from rapidfuzz import process, fuzz
 
 st.set_page_config(page_title="Dashboard Instruktur", layout="wide")
+st.title("📊 Dashboard Instruktur dengan Nilai Tertinggi")
 
 # --- 1. Load data dari GitHub ---
 @st.cache_data
@@ -11,52 +13,79 @@ def load_data():
     url = "https://github.com/AzrielAprieliant/dashboard-pengajar/raw/main/Data%20Instruktur%20asli.xlsx"
     response = requests.get(url)
     xls = pd.ExcelFile(BytesIO(response.content))
-    all_data = pd.concat([xls.parse(sheet) for sheet in xls.sheet_names], ignore_index=True)
-    return all_data
+
+    all_data = []
+    for sheet in xls.sheet_names:
+        df = xls.parse(sheet)
+        df["Tahun"] = sheet[-4:] if sheet[-4:].isdigit() else None
+        all_data.append(df)
+    return pd.concat(all_data, ignore_index=True)
 
 df = load_data()
 
-# --- 2. Bersihkan kolom dan pastikan format ---
-df = df.rename(columns=lambda x: x.strip())
-df["Nama Diklat"] = df["Nama Diklat"].astype(str).str.strip()
-df["Mata Ajar"] = df["Mata Ajar"].astype(str).str.strip()
-df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
+# --- 2. Normalisasi kolom ---
+rename_map = {
+    "Instruktur /WI": "Instruktur",
+    "Rata2": "Nilai",
+    "Rata-Rata": "Nilai"
+}
+df = df.rename(columns=rename_map)
 
-# --- 3. Buat 'Awalan' dari Nama Diklat (3 kata pertama) ---
-def ambil_awalan(nama, n_kata=3):
-    return " ".join(nama.split()[:n_kata]).lower()
+# Hanya ambil kolom yang dibutuhkan
+df = df[["Instruktur", "Mata Ajar", "Nama Diklat", "Nilai", "Tahun"]].copy()
 
-df["Awalan"] = df["Nama Diklat"].apply(lambda x: ambil_awalan(x, n_kata=3))
-awalan_counts = df["Awalan"].value_counts()
+# Pastikan numeric
+df["Nilai"] = pd.to_numeric(df["Nilai"], errors="coerce")
 
-# --- 4. Gabungkan Nama Diklat Berdasarkan Awalan ---
-def nama_diklat_gabungan(row):
-    awalan = row["Awalan"]
-    if awalan_counts[awalan] > 1:
-        return awalan.title()
-    else:
-        return row["Nama Diklat"]
+# --- 3. Clustering Nama Diklat mirip ---
+def cluster_diklat(nama_diklat_list, threshold=85):
+    clustered = {}
+    for nama in nama_diklat_list:
+        found = False
+        for key in clustered:
+            score = fuzz.partial_ratio(nama.lower(), key.lower())
+            if score >= threshold:
+                clustered[key].append(nama)
+                found = True
+                break
+        if not found:
+            clustered[nama] = [nama]
+    
+    # Buat mapping: nama asli -> cluster nama
+    mapping = {}
+    for cluster_name, variants in clustered.items():
+        for variant in variants:
+            mapping[variant] = cluster_name
+    return mapping
 
-df["Nama Diklat Gabungan"] = df.apply(nama_diklat_gabungan, axis=1)
+# Buat mapping nama diklat hasil clustering
+nama_diklat_unik = df["Nama Diklat"].dropna().unique()
+cluster_mapping = cluster_diklat(nama_diklat_unik)
+df["Cluster Diklat"] = df["Nama Diklat"].map(cluster_mapping)
 
-# --- 5. UI Dropdown ---
-st.title("📊 Dashboard Instruktur Nilai Tertinggi")
+# --- 4. Dropdown nama diklat (clustered) ---
+selected_diklat = st.selectbox("📘 Pilih Nama Diklat", sorted(df["Cluster Diklat"].unique()))
 
-pilihan_diklat = st.selectbox("📘 Pilih Nama Diklat", sorted(df["Nama Diklat Gabungan"].unique()))
-filtered_diklat = df[df["Nama Diklat Gabungan"] == pilihan_diklat]
+# Filter berdasarkan diklat
+filtered_diklat = df[df["Cluster Diklat"] == selected_diklat]
 
-pilihan_mata_ajar = st.selectbox("📚 Pilih Mata Ajar", sorted(filtered_diklat["Mata Ajar"].unique()))
-filtered_mata_ajar = filtered_diklat[filtered_diklat["Mata Ajar"] == pilihan_mata_ajar]
+# --- 5. Dropdown mata ajar ---
+selected_mata_ajar = st.selectbox("📚 Pilih Mata Ajar", sorted(filtered_diklat["Mata Ajar"].dropna().unique()))
 
-# --- 6. Ranking Instruktur berdasarkan rata-rata nilai ---
+# Filter lagi berdasarkan mata ajar
+filtered = filtered_diklat[filtered_diklat["Mata Ajar"] == selected_mata_ajar]
+
+# --- 6. Hitung ranking per tahun ---
 ranking = (
-    filtered_mata_ajar.groupby("Nama Instruktur")["Nilai"]
-    .mean()
-    .reset_index()
-    .sort_values(by="Nilai", ascending=False)
+    filtered
+    .groupby(["Tahun", "Instruktur"], as_index=False)
+    .agg(Nilai=("Nilai", "mean"))
+    .dropna(subset=["Nilai"])
 )
 
-ranking.index = range(1, len(ranking) + 1)
+ranking["Rank"] = ranking.groupby("Tahun")["Nilai"].rank(ascending=False, method="first").astype(int)
+ranking = ranking.sort_values(["Tahun", "Rank"])
 
-st.markdown("### 🥇 Ranking Instruktur berdasarkan Nilai Rata-Rata")
+# --- 7. Tampilkan hasil ---
+st.write(f"### 🏆 Pengajar terbaik untuk diklat **{selected_diklat}** dan mata ajar **{selected_mata_ajar}**")
 st.dataframe(ranking, use_container_width=True)
