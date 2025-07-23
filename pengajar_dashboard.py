@@ -20,7 +20,7 @@ df = load_data()
 df = df.rename(columns=lambda x: x.strip())
 df["Nama Diklat"] = df["Nama Diklat"].astype(str).str.strip()
 df["Mata Ajar"] = df["Mata Ajar"].astype(str).str.strip()
-df["Rata-Rata"] = pd.to_numeric(df["Nilai"], errors="coerce")
+df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
 
 # --- 3. Buat 'Awalan' dari Nama Diklat (3 kata pertama) ---
 def ambil_awalan(nama, n_kata=3):
