@@ -33,9 +33,9 @@ def get_awalan_diklat(nama, n_kata=3):
 all_data["Cluster Diklat"] = all_data["Nama Diklat"].apply(get_awalan_diklat)
 
 # === DROPDOWN 1: Cluster Diklat ===
-cluster_selected = st.selectbox("Pilih Cluster Diklat", sorted(all_data['Cluster Diklat'].dropna().unique()))
+cluster_selected = st.selectbox("Pilih Nama Diklat", sorted(all_data['Cluster Diklat'].dropna().unique()))
 
-filtered_cluster = all_data[all_data["Cluster Diklat"] == cluster_selected]
+filtered_cluster = all_data[all_data["Nama Diklat"] == cluster_selected]
 
 # === DROPDOWN 2: Mata Ajar ===
 mata_ajar = st.selectbox("Pilih Mata Ajar", sorted(filtered_cluster['Mata Ajar'].dropna().unique()))
