@@ -1,63 +1,54 @@
-import streamlit as st
 import pandas as pd
-import re
+import streamlit as st
 
-# Fungsi bantu
-def get_awal_diklat(nama, num_kata=3):
-    words = str(nama).split()
-    return ' '.join(words[:num_kata]).strip().lower()
+st.title("📊 Pengajar dengan Nilai Tertinggi")
 
-def extract_year(sheet_name):
-    match = re.search(r'20\d{2}', str(sheet_name))
-    return match.group() if match else '2025'
+# === BACA FILE EXCEL ===
+file = "Data Instruktur asli.xlsx"  # Bisa diganti URL raw GitHub juga
 
-# ================== STREAMLIT APP ==================
+# Sheet per tahun
+sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
+sheet_2025['Tahun'] = 2025
 
-st.title("📊 Dashboard Instruktur Nilai Tertinggi")
+sheet_2024 = pd.read_excel(file, sheet_name="Penilaian 2024")
+sheet_2024['Tahun'] = 2024
 
-# URL file dari GitHub (ubah ini!)
-github_excel_url = "https://raw.githubusercontent.com/username/repo/main/Data%20Instruktur%20asli.xlsx"
+sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
+sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
+sheet_2023['Tahun'] = 2023
 
-# Baca file dari GitHub
-try:
-    xls = pd.ExcelFile(github_excel_url)
-    all_data = []
-    for sheet in xls.sheet_names:
-        df = xls.parse(sheet)
-        df['Sheet Name'] = sheet
-        all_data.append(df)
+# Gabung semua sheet
+all_data = pd.concat([
+    sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
+    sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
+    sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]]
+], ignore_index=True)
 
-    combined_df = pd.concat(all_data, ignore_index=True)
+# Bersihkan dan pastikan numeric
+all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
 
-    # Ambil kolom penting
-    selected_cols = ['Nama Diklat', 'Mata Ajar', 'Instruktur', 'Rata-Rata', 'Sheet Name']
-    df = combined_df[selected_cols].copy()
-    df = df.dropna(subset=['Nama Diklat', 'Instruktur', 'Rata-Rata'])
+# === CLUSTER DIKLAT ===
+def get_awalan_diklat(nama, n_kata=3):
+    return " ".join(str(nama).split()[:n_kata]).lower().strip()
 
-    # Cluster berdasarkan awalan diklat
-    df['Cluster Diklat'] = df['Nama Diklat'].apply(get_awal_diklat)
-    df['Tahun'] = df['Sheet Name'].apply(extract_year)
+all_data["Cluster Diklat"] = all_data["Nama Diklat"].apply(get_awalan_diklat)
 
-    # Dropdown 1: Cluster Diklat
-    cluster_options = sorted(df['Cluster Diklat'].unique())
-    selected_cluster = st.selectbox("Pilih Cluster Diklat", cluster_options)
+# === DROPDOWN 1: Cluster Diklat ===
+cluster_selected = st.selectbox("Pilih Cluster Diklat", sorted(all_data['Cluster Diklat'].dropna().unique()))
 
-    if selected_cluster:
-        df_filtered_cluster = df[df['Cluster Diklat'] == selected_cluster]
+filtered_cluster = all_data[all_data["Cluster Diklat"] == cluster_selected]
 
-        # Dropdown 2: Mata Ajar
-        mata_ajar_options = sorted(df_filtered_cluster['Mata Ajar'].dropna().unique())
-        selected_mata_ajar = st.selectbox("Pilih Mata Ajar", mata_ajar_options)
+# === DROPDOWN 2: Mata Ajar ===
+mata_ajar = st.selectbox("Pilih Mata Ajar", sorted(filtered_cluster['Mata Ajar'].dropna().unique()))
+filtered = filtered_cluster[filtered_cluster['Mata Ajar'] == mata_ajar]
 
-        if selected_mata_ajar:
-            final_df = df_filtered_cluster[df_filtered_cluster['Mata Ajar'] == selected_mata_ajar]
+# === RANKING INSTRUKTUR ===
+pivot = filtered.groupby(['Tahun', 'Instruktur'])['Rata-Rata'].mean().reset_index()
+pivot = pivot.dropna(subset=['Rata-Rata'])
+pivot = pivot.sort_values(by=['Tahun', 'Rata-Rata'], ascending=[False, False])
+pivot['Rank'] = pivot.groupby('Tahun')['Rata-Rata'].rank(method='first', ascending=False).astype(int)
+pivot = pivot.rename(columns={'Rata-Rata': 'Nilai'})
 
-            # Tampilkan ranking
-            st.subheader("🏆 Ranking Instruktur")
-            ranking = final_df[['Instruktur', 'Rata-Rata', 'Tahun']].dropna()
-            ranking = ranking.sort_values(by='Rata-Rata', ascending=False).reset_index(drop=True)
-            ranking.index += 1
-            st.dataframe(ranking)
-
-except Exception as e:
-    st.error(f"Gagal membaca file dari GitHub. Error: {e}")
+# === TAMPILKAN HASIL ===
+st.write(f"📘 Menampilkan instruktur untuk cluster diklat: **{cluster_selected}** dan mata ajar: **{mata_ajar}**")
+st.dataframe(pivot[['Tahun', 'Rank', 'Instruktur', 'Nilai']])
