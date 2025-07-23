@@ -4,8 +4,7 @@ import streamlit as st
 st.title("📊 Pengajar dengan Nilai Tertinggi")
 
 # === BACA FILE EXCEL ===
-file = "Data Instruktur asli.xlsx"  # Bisa diganti URL raw GitHub juga
-
+file = "Data Instruktur asli.xlsx"
 # Sheet per tahun
 sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
 sheet_2025['Tahun'] = 2025
