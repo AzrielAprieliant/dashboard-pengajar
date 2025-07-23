@@ -1,72 +1,83 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
+from rapidfuzz import fuzz
 
-st.set_page_config(page_title="Dashboard Pengajar", layout="wide")
-st.title("📊 Pengajar dengan Nilai Tertinggi")
+st.set_page_config(page_title="Dashboard Instruktur", layout="wide")
+st.title("📊 Dashboard Instruktur Nilai Tertinggi")
 
-# --- 1. Baca dari GitHub ---
-file = "https://raw.githubusercontent.com/AzrielAprieliant/dashboard-pengajar/main/Data%20Instruktur%20asli.xlsx"
+# ===== 1. Baca semua sheet Excel =====
+file = "Data Instruktur asli.xlsx"  # Ganti jika pakai URL GitHub raw
 
-sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
-sheet_2025['Tahun'] = 2025
+@st.cache_data
+def load_data(file):
+    sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
+    sheet_2025['Tahun'] = 2025
 
-sheet_2024 = pd.read_excel(file, sheet_name="Penilaian 2024")
-sheet_2024['Tahun'] = 2024
+    sheet_2024 = pd.read_excel(file, sheet_name="Penilaian 2024")
+    sheet_2024['Tahun'] = 2024
 
-sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
-sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
-sheet_2023['Tahun'] = 2023
+    sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
+    sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
+    sheet_2023['Tahun'] = 2023
 
-# Gabung semua data
-all_data = pd.concat([
-    sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
-    sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
-    sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]]
-], ignore_index=True)
+    data = pd.concat([
+        sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
+        sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
+        sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]]
+    ], ignore_index=True)
 
-# Pastikan numerik
-all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
+    data['Rata-Rata'] = pd.to_numeric(data['Rata-Rata'], errors='coerce')
+    return data
 
-# --- 2. Buat kolom awalan 3 kata ---
-def get_awalan(diklat):
-    return " ".join(str(diklat).split()[:4]).strip().lower()
+all_data = load_data(file)
 
-all_data["Awalan Diklat"] = all_data["Nama Diklat"].apply(get_awalan)
+# ===== 2. Fuzzy Clustering Nama Diklat =====
+@st.cache_data
+def fuzzy_cluster_diklat(df, threshold=85):
+    unique_names = sorted(df["Nama Diklat"].dropna().unique())
+    clustered = []
+    used = set()
 
-# Hitung frekuensi awalan
-awalan_counts = all_data["Awalan Diklat"].value_counts()
+    for nama in unique_names:
+        if nama in used:
+            continue
+        group = [nama]
+        used.add(nama)
+        for other in unique_names:
+            if other in used:
+                continue
+            if fuzz.token_sort_ratio(nama, other) >= threshold:
+                group.append(other)
+                used.add(other)
+        clustered.append(group)
 
-# --- 3. Tentukan 'Nama Diklat Gabungan' ---
-def gabung_diklat(row):
-    awalan = row["Awalan Diklat"]
-    if awalan_counts[awalan] > 1:
-        return awalan.title()  # Gunakan awalan sebagai nama gabungan
-    else:
-        return row["Nama Diklat"]  # Biarkan asli
+    cluster_map = {}
+    for group in clustered:
+        cluster_name = group[0]  # Bisa juga ambil awalan saja
+        for nama in group:
+            cluster_map[nama] = cluster_name
 
-all_data["Nama Diklat Gabungan"] = all_data.apply(gabung_diklat, axis=1)
+    return df["Nama Diklat"].map(cluster_map)
 
-# --- 4. Dropdown Pilih Nama Diklat ---
-nama_diklat_display = st.selectbox("Pilih Nama Diklat", sorted(all_data["Nama Diklat Gabungan"].unique()))
+all_data["Nama Diklat Gabungan"] = fuzzy_cluster_diklat(all_data)
 
-# Filter berdasarkan nama diklat gabungan
-filtered_cluster = all_data[all_data["Nama Diklat Gabungan"] == nama_diklat_display]
+# ===== 3. Dropdown Pilih Diklat Gabungan =====
+selected_diklat = st.selectbox("Pilih Nama Diklat", sorted(all_data["Nama Diklat Gabungan"].unique()))
 
-# --- 5. Dropdown Mata Ajar ---
-mata_ajar = st.selectbox("Pilih Mata Ajar", sorted(filtered_cluster['Mata Ajar'].dropna().unique()))
-filtered = filtered_cluster[filtered_cluster['Mata Ajar'] == mata_ajar]
+filtered_diklat = all_data[all_data["Nama Diklat Gabungan"] == selected_diklat]
 
-# --- 6. Ranking ---
+# ===== 4. Dropdown Pilih Mata Ajar =====
+selected_mata_ajar = st.selectbox("Pilih Mata Ajar", sorted(filtered_diklat["Mata Ajar"].dropna().unique()))
+
+filtered = filtered_diklat[filtered_diklat["Mata Ajar"] == selected_mata_ajar]
+
+# ===== 5. Ranking Instruktur =====
 pivot = filtered.groupby(['Tahun', 'Instruktur'])['Rata-Rata'].mean().reset_index()
-pivot = pivot.dropna()
-pivot = pivot.sort_values(by=['Tahun', 'Rata-Rata'], ascending=[False, False])
-pivot['Rank'] = pivot.groupby('Tahun')['Rata-Rata'].rank(method='first', ascending=False).astype(int)
-pivot = pivot.rename(columns={'Rata-Rata': 'Nilai'})
+pivot = pivot.dropna(subset=['Rata-Rata'])
+pivot_sorted = pivot.sort_values(by=['Tahun', 'Rata-Rata'], ascending=[False, False]).reset_index(drop=True)
+pivot_sorted['Rank'] = pivot_sorted.groupby('Tahun')['Rata-Rata'].rank(method='first', ascending=False).astype(int)
+pivot_sorted = pivot_sorted.rename(columns={'Rata-Rata': 'Nilai'})
 
-# --- 7. Tampilkan Hasil ---
-st.markdown(f"""
-#### 📘 Ranking Instruktur  
-**Diklat:** {nama_diklat_display}  
-**Mata Ajar:** {mata_ajar}
-""")
-st.dataframe(pivot[['Tahun', 'Rank', 'Instruktur', 'Nilai']], use_container_width=True)
+# ===== 6. Tampilkan Hasil =====
+st.markdown(f"### 📘 Hasil untuk Diklat: **{selected_diklat}**, Mata Ajar: **{selected_mata_ajar}**")
+st.dataframe(pivot_sorted[['Tahun', 'Rank', 'Instruktur', 'Nilai']], use_container_width=True)
