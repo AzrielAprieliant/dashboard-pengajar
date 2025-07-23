@@ -23,31 +23,51 @@ all_data = pd.concat([
     sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]]
 ], ignore_index=True)
 
-# Bersihkan dan pastikan numeric
+# Pastikan angka numerik
 all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
 
-# === CLUSTER DIKLAT ===
+# === 2. Buat Awalan Nama Diklat (Clustering Otomatis) ===
 def get_awalan_diklat(nama, n_kata=3):
     return " ".join(str(nama).split()[:n_kata]).lower().strip()
 
-all_data["Cluster Diklat"] = all_data["Nama Diklat"].apply(get_awalan_diklat)
+all_data["Awalan Diklat"] = all_data["Nama Diklat"].apply(get_awalan_diklat)
 
-# === DROPDOWN 1: Cluster Diklat ===
-cluster_selected = st.selectbox("Pilih Nama Diklat", sorted(all_data['Cluster Diklat'].dropna().unique()))
+# === 3. Mapping Awalan → Nama Diklat yang Rapi ===
+custom_nama_diklat = {
+    "audit investigatif level": "Audit Investigatif",
+    "bimbingan teknis reviu": "Bimtek Reviu Laporan",
+    "pelatihan jabatan fungsional": "Pelatihan JF Auditor",
+    # Tambahkan sesuai kebutuhan kamu di sini
+}
 
-filtered_cluster = all_data[all_data["Nama Diklat"] == cluster_selected]
+# Kolom baru untuk ditampilkan di dropdown
+all_data["Nama Diklat Display"] = all_data["Awalan Diklat"].map(custom_nama_diklat).fillna(all_data["Awalan Diklat"].str.title())
 
-# === DROPDOWN 2: Mata Ajar ===
+# === 4. Dropdown Nama Diklat (Cluster Otomatis, Label Rapi) ===
+nama_diklat_display = st.selectbox("Pilih Nama Diklat", sorted(all_data["Nama Diklat Display"].unique()))
+
+# Ambil awalan asli dari nama yang dipilih
+selected_awalan = all_data[all_data["Nama Diklat Display"] == nama_diklat_display]["Awalan Diklat"].iloc[0]
+
+filtered_cluster = all_data[all_data["Awalan Diklat"] == selected_awalan]
+
+# === 5. Dropdown Mata Ajar ===
 mata_ajar = st.selectbox("Pilih Mata Ajar", sorted(filtered_cluster['Mata Ajar'].dropna().unique()))
 filtered = filtered_cluster[filtered_cluster['Mata Ajar'] == mata_ajar]
 
-# === RANKING INSTRUKTUR ===
+# === 6. Ranking Instruktur Berdasarkan Nilai ===
 pivot = filtered.groupby(['Tahun', 'Instruktur'])['Rata-Rata'].mean().reset_index()
 pivot = pivot.dropna(subset=['Rata-Rata'])
 pivot = pivot.sort_values(by=['Tahun', 'Rata-Rata'], ascending=[False, False])
 pivot['Rank'] = pivot.groupby('Tahun')['Rata-Rata'].rank(method='first', ascending=False).astype(int)
 pivot = pivot.rename(columns={'Rata-Rata': 'Nilai'})
 
-# === TAMPILKAN HASIL ===
-st.write(f"📘 Menampilkan instruktur untuk cluster diklat: **{cluster_selected}** dan mata ajar: **{mata_ajar}**")
-st.dataframe(pivot[['Tahun', 'Rank', 'Instruktur', 'Nilai']])
+# === 7. Tampilkan Tabel Hasil ===
+st.markdown(f"""
+#### 📘 Ranking Instruktur
+**Diklat:** {nama_diklat_display}  
+**Mata Ajar:** {mata_ajar}
+""")
+
+st.dataframe(pivot[['Tahun', 'Rank', 'Instruktur', 'Nilai']], use_container_width=True)
+
