@@ -29,7 +29,7 @@ all_data = pd.concat([
 all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
 
 # === 2. Clustering Nama Diklat pakai RapidFuzz ===
-def cluster_diklat(diklat_list, threshold=85):
+def cluster_diklat(diklat_list, threshold=90):
     clusters = {}
     for diklat in diklat_list:
         found = None
