@@ -5,3 +5,5 @@ openpyxl
 matplotlib
 rapidfuzz
 sentence-transformers
+numpy
+skicit-learn
