@@ -34,7 +34,7 @@ all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
 unique_diklat = all_data ["Nama Diklat"].dropna().unique().tolist()
 
 # Load Model embedding
-model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
+model = SentenceTransformer("paraphrase-MiniLM-L6-v2", device="cpu")
 embeddings = model.encode(unique_diklat)
 
 # DBSCAN clustering
