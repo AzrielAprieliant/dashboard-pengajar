@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
-from rapidfuzz import process, fuzz
+from sklearn.cluster import DBSCAN
+import numpy as np
 
 st.title("📊 Dashboard Instruktur Nilai Tertinggi")
 
@@ -28,33 +29,34 @@ all_data = pd.concat([
 # Pastikan kolom Rata-Rata numeric
 all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
 
-# === 2. Clustering Nama Diklat pakai RapidFuzz ===
-def cluster_diklat(diklat_list, threshold=90):
-    clusters = {}
-    for diklat in diklat_list:
-        found = None
-        for label in clusters:
-            if fuzz.token_sort_ratio(diklat, label) >= threshold:
-                found = label
-                break
-        if found:
-            clusters[found].append(diklat)
-        else:
-            clusters[diklat] = [diklat]
-    return clusters
+# === 2. Clustering Nama Diklat pakai Embedding ===
+unique_diklat = all_data ["Nama Diklat"].dropna().unique().tolist()
 
-# Ambil daftar diklat unik
-unique_diklat = all_data["Nama Diklat"].dropna().unique().tolist()
-cluster_result = cluster_diklat(unique_diklat)
+# Load Model embedding
+model = SentenceTransformer("paraphrase-MiniLM-L6-v2"]
+                            embeddings = model.encode(unique_dilat)
 
-# Mapping nama diklat asli ke cluster
-map_diklat = {}
-for group_name, variants in cluster_result.items():
-    for var in variants:
-        map_diklat[var] = group_name
+# DBSCAN clustering
+clustering = DBSCAN(eps=1.0, min_samples=2, metric='cosine').fit(embeddings)
+labels = clustering.labels_
 
-# Tambahkan kolom gabungan
-all_data["Nama Diklat Gabungan"] = all_data["Nama Diklat"].map(map_diklat)
+# Buat mapping nama diklat ke cluster label
+cluster_map = {}
+for label in set(labels):
+    if label == -1:
+        continue
+    indexes = np.where(labels == label)[0]
+    cluster_name = unique_diklat[indexes[0]]
+    for i in indexes:
+        cluster_map [unique_diklat[i]] = cluster_name
+
+# Diklat yang tidak termasuk cluster tetap pakai nama asli
+for i, nama in enumerate(unique_diklat):
+    if nama not in cluster_map:
+        cluster_map[nama] = nama
+
+# Tambahkan ke data
+all_data["Nama Diklat Gabungan"] = all_data["Nama Diklat"].map(cluster_map)
 
 # === 3. Dropdown Nama Diklat ===
 nama_diklat = st.selectbox("Pilih Nama Diklat", sorted(all_data["Nama Diklat Gabungan"].dropna().unique()))
