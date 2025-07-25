@@ -1,8 +1,8 @@
 import pandas as pd
 import streamlit as st
-from sklearn.cluster import DBSCAN
-import numpy as np
 from sentence_transformers import SenctenceTransFormer
+from sklearn.metrics.pairwise import cosine_similiarity
+import numpy as np
 
 st.title("📊 Dashboard Instruktur Nilai Tertinggi")
 
