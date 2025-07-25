@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 from sklearn.cluster import DBSCAN
 import numpy as np
+from sentence_transformers import SenctenceTransFormer
 
 st.title("📊 Dashboard Instruktur Nilai Tertinggi")
 
