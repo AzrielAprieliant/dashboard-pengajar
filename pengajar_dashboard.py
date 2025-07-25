@@ -35,7 +35,7 @@ unique_diklat = all_data ["Nama Diklat"].dropna().unique().tolist()
 
 # Load Model embedding
 model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
-embeddings = model.encode(unique_dilat)
+embeddings = model.encode(unique_diklat)
 
 # DBSCAN clustering
 clustering = DBSCAN(eps=1.0, min_samples=2, metric='cosine').fit(embeddings)
