@@ -1,9 +1,6 @@
-Flask
 streamlit
 pandas
 openpyxl
-matplotlib
-rapidfuzz
 sentence-transformers
+scikit-learn
 numpy
-skicit-learn
