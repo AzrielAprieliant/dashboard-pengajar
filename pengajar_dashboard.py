@@ -46,14 +46,14 @@ grouped_diklat = group_similar_names(unique_diklat)
 
 # Loop seluruh grup dan tampilkan ranking
 for i, group in enumerate(grouped_diklat, 1):
-    group_name = group[0]  # pakai nama pertama sebagai wakil
+    group_name = group[0]
     filtered_df = df[df["Nama Diklat"].isin(group)]
 
     st.subheader(f"📌 Grup Diklat: {group_name}")
     mata_ajar_grouped = filtered_df.groupby(["Nama Instruktur", "Nama Mata Ajar"])["Rata-Rata"].mean().reset_index()
     instruktur_avg = mata_ajar_grouped.groupby("Nama Instruktur")["Rata-Rata"].mean().reset_index()
     instruktur_avg = instruktur_avg.sort_values(by="Rata-Rata", ascending=False).reset_index(drop=True)
-    instruktur_avg.index += 1  # Ranking dimulai dari 1
+    instruktur_avg.index += 1
 
     st.write("📚 Daftar Mata Ajar & Nilai:")
     st.dataframe(mata_ajar_grouped, use_container_width=True)
