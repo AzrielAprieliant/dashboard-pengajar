@@ -7,7 +7,7 @@ st.set_page_config(page_title="Dashboard Pengajar", layout="wide")
 st.title("📊 Dashboard Penilaian Instruktur")
 
 # Load file Excel
-file_path = "data instruktur asli.xlsx"
+file_path = "Data Instruktur asli.xlsx"
 if not os.path.exists(file_path):
     st.error(f"File tidak ditemukan: {file_path}")
     st.stop()
