@@ -6,7 +6,7 @@ st.set_page_config(page_title="Dashboard Instruktur", layout="wide")
 st.title("📊 Dashboard Penilaian Instruktur")
 
 # ======== STEP 1: BACA DATA DARI SEMUA SHEET ========
-file = "data instruktur asli.xlsx"
+file = "Data Instruktur asli.xlsx"
 
 # Sheet 2025
 sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
