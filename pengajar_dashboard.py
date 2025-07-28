@@ -37,7 +37,7 @@ for name in diklat_names:
             break
     if not found:
         grouped_diklat[name] = [name]
-
+        
 # --- Pilih nama diklat terkelompok ---
 selected_diklat_group = st.selectbox("📌 Pilih Nama Diklat", list(grouped_diklat.keys()))
 selected_diklat_names = grouped_diklat[selected_diklat_group]
