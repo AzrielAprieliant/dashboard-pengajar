@@ -52,7 +52,7 @@ df = pd.concat([
 df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
 
 # Gabungkan dengan data unit kerja
-df = pd.merge(df, df_unitkerja, on="Instruktur", how="left")
+df = pd.merge(df, df_unitkerja.rename(columns={"Nama": "Instruktur"}), on="Instruktur", how="left")
 
 # === KELOMPOK NAMA DIKLAT PAKAI TF-IDF + KMeans ===
 diklat_list = df["Nama Diklat"].dropna().unique().tolist()
