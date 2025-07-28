@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 from sklearn.metrics import pairwise_distances_argmin_min
 
-# === CONFIG STREAMLIT ===
+# === CONFIGURASI LAYOUT STREAMLIT ===
 st.set_page_config(
     page_title="Dashboard Instruktur",
     layout="centered",
@@ -24,25 +24,20 @@ st.markdown(
 
 st.title("📊 Dashboard Penilaian Instruktur")
 
-# === BACA DATA EXCEL ===
-file_penilaian = "data instruktur asli.xlsx"
-file_unitkerja = "nama dan unit kerja.xlsx"
+# === BACA DATA PENILAIAN ===
+file = "data instruktur asli.xlsx"
 
-# Baca unit kerja
-df_unitkerja = pd.read_excel(file_unitkerja)
-
-# Baca data penilaian
-sheet_2025 = pd.read_excel(file_penilaian, sheet_name="Penilaian Jan Jun 2025")
+sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
 sheet_2025["Tahun"] = 2025
 
-sheet_2024 = pd.read_excel(file_penilaian, sheet_name="Penilaian 2024")
+sheet_2024 = pd.read_excel(file, sheet_name="Penilaian 2024")
 sheet_2024["Tahun"] = 2024
 
-sheet_2023 = pd.read_excel(file_penilaian, sheet_name="Penilaian 2023")
+sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
 sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
 sheet_2023["Tahun"] = 2023
 
-# Gabungkan semua sheet
+# Gabungkan data
 df = pd.concat([
     sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
     sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
@@ -51,11 +46,24 @@ df = pd.concat([
 
 df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
 
-# Gabungkan dengan data unit kerja
-df = pd.merge(df, df_unitkerja.rename(columns={"Nama": "Instruktur"}), on="Instruktur", how="left")
+# === BACA DATA UNIT KERJA DAN MERGE ===
+df_unitkerja = pd.read_excel("nama dan unit kerja.xlsx")
 
-# === KELOMPOK NAMA DIKLAT PAKAI TF-IDF + KMeans ===
+# Normalisasi nama untuk mencocokkan
+df["Instruktur"] = df["Instruktur"].astype(str).str.strip().str.lower()
+df_unitkerja["Nama"] = df_unitkerja["Nama"].astype(str).str.strip().str.lower()
+
+# Gabungkan dengan data unit kerja
+df = pd.merge(
+    df,
+    df_unitkerja.rename(columns={"Nama": "Instruktur"}),
+    on="Instruktur",
+    how="left"
+)
+
+# === CLUSTER NAMA DIKLAT MENGGUNAKAN TF-IDF + KMeans ===
 diklat_list = df["Nama Diklat"].dropna().unique().tolist()
+
 vectorizer = TfidfVectorizer(analyzer="word", ngram_range=(1, 2))
 X = vectorizer.fit_transform(diklat_list)
 
@@ -65,7 +73,11 @@ model.fit(X)
 
 labels = model.labels_
 closest, _ = pairwise_distances_argmin_min(model.cluster_centers_, X)
-cluster_map = {diklat_list[i]: diklat_list[closest[label]] for i, label in enumerate(labels)}
+
+cluster_map = {}
+for idx, label in enumerate(labels):
+    cluster_name = diklat_list[closest[label]]
+    cluster_map[diklat_list[idx]] = cluster_name
 
 df["Grup Diklat"] = df["Nama Diklat"].map(cluster_map)
 
@@ -80,13 +92,16 @@ filtered_df = filtered_df[filtered_df["Mata Ajar"] == selected_mata_ajar]
 
 # === DROPDOWN: PILIH UNIT KERJA ===
 available_unit_kerja = filtered_df["Unit Kerja"].dropna().unique()
-selected_unit_kerja = st.selectbox("🏢 Unit Kerja", sorted(available_unit_kerja))
-filtered_df = filtered_df[filtered_df["Unit Kerja"] == selected_unit_kerja]
+if len(available_unit_kerja) == 0:
+    st.warning("❗ Data tidak memiliki Unit Kerja yang cocok.")
+else:
+    selected_unit_kerja = st.selectbox("🏢 Unit Kerja", sorted(available_unit_kerja))
+    filtered_df = filtered_df[filtered_df["Unit Kerja"] == selected_unit_kerja]
 
-# === TAMPILKAN RANKING INSTRUKTUR YANG TERFILTER ===
+# === HITUNG RANKING INSTRUKTUR ===
 if not filtered_df.empty:
     grouped = (
-        filtered_df.groupby(["Instruktur", "Unit Kerja", "Tahun"])["Rata-Rata"]
+        filtered_df.groupby(["Instruktur", "Tahun"])["Rata-Rata"]
         .mean()
         .reset_index()
         .rename(columns={"Rata-Rata": "Nilai"})
@@ -95,7 +110,7 @@ if not filtered_df.empty:
     grouped = grouped.sort_values(by=["Tahun", "Nilai"], ascending=[False, False])
     grouped["Rank"] = grouped.groupby("Tahun")["Nilai"].rank(method="first", ascending=False).astype(int)
 
-    st.markdown("### 📈 Ranking Instruktur")
-    st.dataframe(grouped[["Tahun", "Rank", "Instruktur", "Unit Kerja", "Nilai"]], use_container_width=True)
+    st.markdown(f"### 📈 Ranking Instruktur")
+    st.dataframe(grouped[["Tahun", "Rank", "Instruktur", "Nilai"]], use_container_width=True)
 else:
-    st.warning("Data tidak ditemukan untuk kombinasi ini.")
+    st.warning("Tidak ada data untuk kombinasi Diklat, Mata Ajar, dan Unit Kerja ini.")
