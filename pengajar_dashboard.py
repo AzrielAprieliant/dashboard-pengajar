@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 from sklearn.metrics import pairwise_distances_argmin_min
 
-# === CONFIGURASI LAYOUT STREAMLIT ===
+# === CONFIG STREAMLIT ===
 st.set_page_config(
     page_title="Dashboard Instruktur",
     layout="centered",
@@ -24,25 +24,25 @@ st.markdown(
 
 st.title("📊 Dashboard Penilaian Instruktur")
 
-# === BACA DATA ===
-file = "data instruktur asli.xlsx"
-unitkerja_file = "nama dan unit kerja.xlsx"
+# === BACA DATA EXCEL ===
+file_penilaian = "data instruktur asli.xlsx"
+file_unitkerja = "nama dan unit kerja.xlsx"
 
-# Baca data unit kerja
-df_unitkerja = pd.read_excel(unitkerja_file)
+# Baca unit kerja
+df_unitkerja = pd.read_excel(file_unitkerja)
 
-# Baca sheet dan beri kolom tahun
-sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
+# Baca data penilaian
+sheet_2025 = pd.read_excel(file_penilaian, sheet_name="Penilaian Jan Jun 2025")
 sheet_2025["Tahun"] = 2025
 
-sheet_2024 = pd.read_excel(file, sheet_name="Penilaian 2024")
+sheet_2024 = pd.read_excel(file_penilaian, sheet_name="Penilaian 2024")
 sheet_2024["Tahun"] = 2024
 
-sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
+sheet_2023 = pd.read_excel(file_penilaian, sheet_name="Penilaian 2023")
 sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
 sheet_2023["Tahun"] = 2023
 
-# Gabungkan semua data
+# Gabungkan semua sheet
 df = pd.concat([
     sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
     sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
@@ -51,12 +51,11 @@ df = pd.concat([
 
 df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
 
-# Gabungkan dengan unit kerja
+# Gabungkan dengan data unit kerja
 df = pd.merge(df, df_unitkerja, on="Instruktur", how="left")
 
-# === CLUSTER NAMA DIKLAT MENGGUNAKAN TF-IDF + KMeans ===
+# === KELOMPOK NAMA DIKLAT PAKAI TF-IDF + KMeans ===
 diklat_list = df["Nama Diklat"].dropna().unique().tolist()
-
 vectorizer = TfidfVectorizer(analyzer="word", ngram_range=(1, 2))
 X = vectorizer.fit_transform(diklat_list)
 
@@ -66,24 +65,25 @@ model.fit(X)
 
 labels = model.labels_
 closest, _ = pairwise_distances_argmin_min(model.cluster_centers_, X)
-
-cluster_map = {}
-for idx, label in enumerate(labels):
-    cluster_name = diklat_list[closest[label]]
-    cluster_map[diklat_list[idx]] = cluster_name
+cluster_map = {diklat_list[i]: diklat_list[closest[label]] for i, label in enumerate(labels)}
 
 df["Grup Diklat"] = df["Nama Diklat"].map(cluster_map)
 
-# === PILIH DIKLAT ===
+# === DROPDOWN: PILIH GRUP DIKLAT ===
 selected_diklat_group = st.selectbox("📌 Grup Diklat", sorted(df["Grup Diklat"].dropna().unique()))
 filtered_df = df[df["Grup Diklat"] == selected_diklat_group]
 
-# === PILIH MATA AJAR ===
+# === DROPDOWN: PILIH MATA AJAR ===
 available_mata_ajar = filtered_df["Mata Ajar"].dropna().unique()
 selected_mata_ajar = st.selectbox("📚 Mata Ajar", sorted(available_mata_ajar))
 filtered_df = filtered_df[filtered_df["Mata Ajar"] == selected_mata_ajar]
 
-# === HITUNG RANKING + TAMPILKAN UNIT KERJA ===
+# === DROPDOWN: PILIH UNIT KERJA ===
+available_unit_kerja = filtered_df["Unit Kerja"].dropna().unique()
+selected_unit_kerja = st.selectbox("🏢 Unit Kerja", sorted(available_unit_kerja))
+filtered_df = filtered_df[filtered_df["Unit Kerja"] == selected_unit_kerja]
+
+# === TAMPILKAN RANKING INSTRUKTUR YANG TERFILTER ===
 if not filtered_df.empty:
     grouped = (
         filtered_df.groupby(["Instruktur", "Unit Kerja", "Tahun"])["Rata-Rata"]
@@ -95,8 +95,7 @@ if not filtered_df.empty:
     grouped = grouped.sort_values(by=["Tahun", "Nilai"], ascending=[False, False])
     grouped["Rank"] = grouped.groupby("Tahun")["Nilai"].rank(method="first", ascending=False).astype(int)
 
-    st.markdown(f"### 📈 Ranking Instruktur")
+    st.markdown("### 📈 Ranking Instruktur")
     st.dataframe(grouped[["Tahun", "Rank", "Instruktur", "Unit Kerja", "Nilai"]], use_container_width=True)
-
 else:
-    st.warning("Data tidak ditemukan untuk kombinasi Diklat dan Mata Ajar ini.")
+    st.warning("Data tidak ditemukan untuk kombinasi ini.")
