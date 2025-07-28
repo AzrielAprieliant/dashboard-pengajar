@@ -1,69 +1,105 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
+from sklearn.metrics import pairwise_distances_argmin_min
 
-# Judul
+# === CONFIGURASI LAYOUT STREAMLIT ===
+st.set_page_config(
+    page_title="Dashboard Instruktur",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
+
+st.markdown(
+    """
+    <style>
+    .main {
+        padding-left: 3rem;
+        padding-right: 3rem;
+    }
+    .dataframe th, .dataframe td {
+        font-size: 14px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 st.title("📊 Dashboard Penilaian Instruktur")
 
-# === 1. Baca file Excel dari GitHub ===
-file_url = "https://raw.githubusercontent.com/AzrielAprieliant/dashboard-pengajar/main/data%20instruktur%20asli.xlsx"
+# === BACA DATA ===
+file = "data instruktur asli.xlsx"
 
-# Load data
-sheet_2025 = pd.read_excel(file_url, sheet_name="Penilaian Jan Jun 2025")
-sheet_2025['Tahun'] = 2025
+# Baca sheet dan beri kolom tahun
+sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
+sheet_2025["Tahun"] = 2025
 
-sheet_2024 = pd.read_excel(file_url, sheet_name="Penilaian 2024")
-sheet_2024['Tahun'] = 2024
+sheet_2024 = pd.read_excel(file, sheet_name="Penilaian 2024")
+sheet_2024["Tahun"] = 2024
 
-sheet_2023 = pd.read_excel(file_url, sheet_name="Penilaian 2023")
+sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
 sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
-sheet_2023['Tahun'] = 2023
+sheet_2023["Tahun"] = 2023
 
-# Gabungkan data
-all_data = pd.concat([
+# Gabungkan semua data
+df = pd.concat([
     sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
     sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
-    sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]]
+    sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
 ], ignore_index=True)
 
-# Pastikan kolom nilai numerik
-all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
+df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
 
-# === 2. Clustering Nama Diklat dengan TF-IDF + KMeans ===
-unique_diklat = all_data['Nama Diklat'].dropna().unique()
-vectorizer = TfidfVectorizer(stop_words='indonesian')
-X = vectorizer.fit_transform(unique_diklat)
+# === CLUSTER NAMA DIKLAT MENGGUNAKAN TF-IDF + KMeans ===
+diklat_list = df["Nama Diklat"].dropna().unique().tolist()
 
-# Jumlah cluster diatur otomatis berdasarkan jumlah kata awal unik terbanyak
-n_clusters = min(len(unique_diklat), 15)
-kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-kmeans.fit(X)
-labels = kmeans.labels_
+vectorizer = TfidfVectorizer(analyzer="word", ngram_range=(1, 2))
+X = vectorizer.fit_transform(diklat_list)
 
-# Buat mapping nama diklat ke nama grup
-diklat_cluster_map = {nama: f"Grup {label+1} - {nama.split()[0]}" for nama, label in zip(unique_diklat, labels)}
-all_data['Grup Diklat'] = all_data['Nama Diklat'].map(diklat_cluster_map)
+# Tentukan jumlah cluster berdasarkan panjang data
+n_clusters = min(len(diklat_list), 15)
+model = KMeans(n_clusters=n_clusters, random_state=42, n_init="auto")
+model.fit(X)
 
-# === 3. Dropdown grup diklat ===
-selected_group = st.selectbox("📌 Pilih Grup Diklat", sorted(all_data['Grup Diklat'].dropna().unique()))
-filtered_df = all_data[all_data['Grup Diklat'] == selected_group]
+# Ambil label cluster dan nama wakil dari tiap cluster
+labels = model.labels_
+closest, _ = pairwise_distances_argmin_min(model.cluster_centers_, X)
 
-# === 4. Dropdown mata ajar ===
-selected_mata_ajar = st.selectbox("📚 Pilih Mata Ajar", sorted(filtered_df['Mata Ajar'].dropna().unique()))
-filtered_df = filtered_df[filtered_df['Mata Ajar'] == selected_mata_ajar]
+# Mapping diklat ke label nama grup
+cluster_map = {}
+for idx, label in enumerate(labels):
+    cluster_name = diklat_list[closest[label]]
+    cluster_map[diklat_list[idx]] = cluster_name
 
-# === 5. Ranking nilai tertinggi ===
-pivot = (
-    filtered_df.groupby(['Tahun', 'Instruktur'])['Rata-Rata']
-    .mean()
-    .reset_index()
-    .dropna()
-)
-pivot = pivot.sort_values(by=['Tahun', 'Rata-Rata'], ascending=[False, False])
-pivot['Rank'] = pivot.groupby('Tahun')['Rata-Rata'].rank(method='first', ascending=False).astype(int)
-pivot = pivot.rename(columns={'Rata-Rata': 'Nilai'})
+df["Grup Diklat"] = df["Nama Diklat"].map(cluster_map)
 
-# === 6. Tampilkan hasil ===
-st.write(f"📊 **Ranking Instruktur** untuk Grup: `{selected_group}`, Mata Ajar: `{selected_mata_ajar}`")
-st.dataframe(pivot[['Tahun', 'Rank', 'Instruktur', 'Nilai']])
+# === DROPDOWN: PILIH DIKLAT (GRUP) ===
+selected_diklat_group = st.selectbox("📌 Grup Diklat", sorted(df["Grup Diklat"].dropna().unique()))
+
+filtered_df = df[df["Grup Diklat"] == selected_diklat_group]
+
+# === DROPDOWN: PILIH MATA AJAR ===
+available_mata_ajar = filtered_df["Mata Ajar"].dropna().unique()
+selected_mata_ajar = st.selectbox("📚 Mata Ajar", sorted(available_mata_ajar))
+
+filtered_df = filtered_df[filtered_df["Mata Ajar"] == selected_mata_ajar]
+
+# === HITUNG RANKING NILAI PER INSTRUKTUR PER TAHUN ===
+if not filtered_df.empty:
+    grouped = (
+        filtered_df.groupby(["Instruktur", "Tahun"])["Rata-Rata"]
+        .mean()
+        .reset_index()
+        .rename(columns={"Rata-Rata": "Nilai"})
+    )
+
+    # Ranking berdasarkan nilai tertinggi
+    grouped = grouped.sort_values(by=["Tahun", "Nilai"], ascending=[False, False])
+    grouped["Rank"] = grouped.groupby("Tahun")["Nilai"].rank(method="first", ascending=False).astype(int)
+
+    # Tampilkan hasil
+    st.markdown(f"### 📈 Ranking Instruktur")
+    st.dataframe(grouped[["Tahun", "Rank", "Instruktur", "Nilai"]], use_container_width=True)
+else:
+    st.warning("Data tidak ditemukan untuk kombinasi Diklat dan Mata Ajar ini.")
