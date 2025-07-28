@@ -1,62 +1,59 @@
 import streamlit as st
 import pandas as pd
 import os
-from rapidfuzz import process, fuzz
+from rapidfuzz import fuzz
 
-st.set_page_config(page_title="Dashboard Instruktur", layout="wide")
-
-# --- Judul ---
+# --- Judul App ---
 st.title("📊 Dashboard Penilaian Instruktur")
 
-# --- Cek file ---
+# --- Cek file ada atau tidak ---
 file_path = "data instruktur asli.xlsx"
+
 if not os.path.exists(file_path):
-    st.error(f"File '{file_path}' tidak ditemukan. Harap unggah file dengan nama tersebut.")
+    st.error(f"File '{file_path}' tidak ditemukan. Pastikan file ada di direktori yang sama dengan script.")
     st.stop()
 
 # --- Baca semua sheet ---
 all_sheets = pd.read_excel(file_path, sheet_name=None)
 data = pd.concat(all_sheets.values(), ignore_index=True)
 
-# --- Bersihkan data ---
-data = data.rename(columns=lambda x: x.strip())
+# --- Cek kolom penting ---
 if 'Nama Diklat' not in data.columns or 'Mata Ajar' not in data.columns or 'Rata-Rata' not in data.columns:
-    st.error("File harus memiliki kolom: 'Nama Diklat', 'Mata Ajar', dan 'Rata-Rata'")
+    st.error("Kolom 'Nama Diklat', 'Mata Ajar', atau 'Rata-Rata' tidak ditemukan.")
     st.stop()
 
-# --- Kelompokkan Nama Diklat mirip ---
-diklat_names = data['Nama Diklat'].dropna().unique().tolist()
-grouped_diklat = {}
+# --- Bersihkan data ---
+data.dropna(subset=['Nama Diklat', 'Mata Ajar', 'Rata-Rata'], inplace=True)
 
-for name in diklat_names:
+# --- Kelompokkan nama diklat berdasarkan kemiripan string (RapidFuzz) ---
+grouped_diklat = {}
+threshold = 85  # tingkat kemiripan minimum
+
+for diklat in data['Nama Diklat'].unique():
     found = False
     for group in grouped_diklat:
-        if fuzz.partial_ratio(name.lower(), group.lower()) > 85:
-            grouped_diklat[group].append(name)
+        if fuzz.token_sort_ratio(diklat, group) >= threshold:
+            grouped_diklat[group].append(diklat)
             found = True
             break
     if not found:
-        grouped_diklat[name] = [name]
-        
-# --- Pilih nama diklat terkelompok ---
+        grouped_diklat[diklat] = [diklat]
+
+# --- Dropdown pilih grup diklat ---
 selected_diklat_group = st.selectbox("📌 Pilih Nama Diklat", list(grouped_diklat.keys()))
 selected_diklat_names = grouped_diklat[selected_diklat_group]
 
-# --- Filter data ---
+# --- Filter data berdasarkan pilihan diklat ---
 filtered_data = data[data['Nama Diklat'].isin(selected_diklat_names)]
 
-# --- Pilih mata ajar ---
-available_mata_ajar = filtered_data['Mata Ajar'].dropna().unique()
-selected_mata_ajar = st.selectbox("📚 Pilih Mata Ajar", available_mata_ajar)
+# --- Dropdown mata ajar ---
+mata_ajar_options = filtered_data['Mata Ajar'].unique()
+selected_mata_ajar = st.selectbox("📘 Pilih Mata Ajar", mata_ajar_options)
 
-# --- Tampilkan data nilai ---
-nilai_data = filtered_data[filtered_data['Mata Ajar'] == selected_mata_ajar]
-nilai_data = nilai_data.sort_values(by='Rata-Rata', ascending=False)
+# --- Tampilkan data sesuai pilihan ---
+final_data = filtered_data[filtered_data['Mata Ajar'] == selected_mata_ajar]
+final_data_sorted = final_data.sort_values(by='Rata-Rata', ascending=False)
 
-st.subheader("📈 Tabel Nilai Instruktur")
-st.dataframe(nilai_data[['Nama Diklat', 'Mata Ajar', 'Rata-Rata']].reset_index(drop=True))
-
-# --- Tampilkan ranking ---
-st.subheader("🏅 Ranking Instruktur (berdasarkan Rata-Rata)")
-for idx, row in nilai_data.iterrows():
-    st.markdown(f"**{idx+1}. {row['Nama Diklat']}** - Rata-Rata: {row['Rata-Rata']}")
+# --- Tampilkan tabel dan ranking ---
+st.subheader("🏆 Ranking Instruktur")
+st.dataframe(final_data_sorted[['Nama Instruktur', 'Rata-Rata']].reset_index(drop=True))
