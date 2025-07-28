@@ -62,6 +62,8 @@ df["Nama_Cocok"] = df["Instruktur"].apply(lambda x: fuzzy_match(str(x), df_unitk
 df = pd.merge(df, df_unitkerja[["Nama_Unit", "nama unit"]], left_on="Nama_Cocok", right_on="Nama_Unit", how="left")
 df = df.rename(columns={"nama unit": "Unit Kerja"})
 
+st.write(df[["Instruktur", "Nama_Cocok, "Unit Kerja"]].drop_duplicat())
+
 # === CLUSTER NAMA DIKLAT DENGAN TF-IDF + KMeans ===
 diklat_list = df["Nama Diklat"].dropna().unique().tolist()
 
