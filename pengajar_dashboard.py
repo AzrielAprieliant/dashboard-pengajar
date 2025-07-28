@@ -1,59 +1,56 @@
 import streamlit as st
 import pandas as pd
-import os
 from rapidfuzz import fuzz
+import os
 
-# --- Judul App ---
+st.set_page_config(page_title="Dashboard Pengajar", layout="wide")
+
 st.title("📊 Dashboard Penilaian Instruktur")
-
-# --- Cek file ada atau tidak ---
 file_path = "data instruktur asli.xlsx"
 
+# Cek apakah file ada
 if not os.path.exists(file_path):
-    st.error(f"File '{file_path}' tidak ditemukan. Pastikan file ada di direktori yang sama dengan script.")
+    st.error("❌ File 'data instruktur asli.xlsx' tidak ditemukan.")
     st.stop()
 
-# --- Baca semua sheet ---
-all_sheets = pd.read_excel(file_path, sheet_name=None)
-data = pd.concat(all_sheets.values(), ignore_index=True)
+# Baca semua sheet Excel
+sheets = pd.read_excel(file_path, sheet_name=None)
+df = pd.concat(sheets.values(), ignore_index=True)
 
-# --- Cek kolom penting ---
-if 'Nama Diklat' not in data.columns or 'Mata Ajar' not in data.columns or 'Rata-Rata' not in data.columns:
-    st.error("Kolom 'Nama Diklat', 'Mata Ajar', atau 'Rata-Rata' tidak ditemukan.")
+# Cek kolom penting
+required_columns = ['Nama Diklat', 'Mata Ajar', 'Rata-Rata', 'Nama Instruktur']
+if not all(col in df.columns for col in required_columns):
+    st.error("❌ Kolom yang dibutuhkan tidak ditemukan di file Excel.")
     st.stop()
 
-# --- Bersihkan data ---
-data.dropna(subset=['Nama Diklat', 'Mata Ajar', 'Rata-Rata'], inplace=True)
+# Bersihkan data
+df.dropna(subset=['Nama Diklat', 'Mata Ajar', 'Rata-Rata', 'Nama Instruktur'], inplace=True)
+df['Rata-Rata'] = pd.to_numeric(df['Rata-Rata'], errors='coerce')
 
-# --- Kelompokkan nama diklat berdasarkan kemiripan string (RapidFuzz) ---
+# Kelompokkan Nama Diklat berdasarkan kemiripan
 grouped_diklat = {}
-threshold = 85  # tingkat kemiripan minimum
+threshold = 85
 
-for diklat in data['Nama Diklat'].unique():
+for diklat in df['Nama Diklat'].unique():
     found = False
-    for group in grouped_diklat:
-        if fuzz.token_sort_ratio(diklat, group) >= threshold:
-            grouped_diklat[group].append(diklat)
+    for key in grouped_diklat:
+        if fuzz.token_sort_ratio(diklat, key) >= threshold:
+            grouped_diklat[key].append(diklat)
             found = True
             break
     if not found:
         grouped_diklat[diklat] = [diklat]
 
-# --- Dropdown pilih grup diklat ---
-selected_diklat_group = st.selectbox("📌 Pilih Nama Diklat", list(grouped_diklat.keys()))
-selected_diklat_names = grouped_diklat[selected_diklat_group]
+# Dropdown diklat
+selected_group = st.selectbox("📌 Pilih Nama Diklat", list(grouped_diklat.keys()))
+filtered_df = df[df['Nama Diklat'].isin(grouped_diklat[selected_group])]
 
-# --- Filter data berdasarkan pilihan diklat ---
-filtered_data = data[data['Nama Diklat'].isin(selected_diklat_names)]
+# Dropdown mata ajar
+selected_mata_ajar = st.selectbox("📘 Pilih Mata Ajar", filtered_df['Mata Ajar'].unique())
 
-# --- Dropdown mata ajar ---
-mata_ajar_options = filtered_data['Mata Ajar'].unique()
-selected_mata_ajar = st.selectbox("📘 Pilih Mata Ajar", mata_ajar_options)
+# Tampilkan tabel ranking
+result = filtered_df[filtered_df['Mata Ajar'] == selected_mata_ajar]
+result_sorted = result.sort_values(by='Rata-Rata', ascending=False)
 
-# --- Tampilkan data sesuai pilihan ---
-final_data = filtered_data[filtered_data['Mata Ajar'] == selected_mata_ajar]
-final_data_sorted = final_data.sort_values(by='Rata-Rata', ascending=False)
-
-# --- Tampilkan tabel dan ranking ---
-st.subheader("🏆 Ranking Instruktur")
-st.dataframe(final_data_sorted[['Nama Instruktur', 'Rata-Rata']].reset_index(drop=True))
+st.subheader("🏅 Ranking Instruktur")
+st.dataframe(result_sorted[['Nama Instruktur', 'Rata-Rata']].reset_index(drop=True))
