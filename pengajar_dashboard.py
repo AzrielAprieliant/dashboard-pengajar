@@ -14,12 +14,8 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .main {
-        padding-left: 3rem;
-        padding-right: 3rem;
-    }
-    .dataframe th, .dataframe td {
-        font-size: 14px;
+    html, body, [class*="css"]  {
+        zoom: 80%;
     }
     </style>
     """,
