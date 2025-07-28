@@ -1,88 +1,82 @@
-import pandas as pd
 import streamlit as st
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
+import pandas as pd
+from rapidfuzz import process, fuzz
+from io import BytesIO
 
-st.title("📊 Dashboard Instruktur Nilai Tertinggi")
+st.set_page_config(page_title="Dashboard Nilai Instruktur", layout="wide")
 
-# === 1. Baca data dari file lokal ===
-file = "Data Instruktur asli.xlsx"
+def load_excel(file):
+    xls = pd.ExcelFile(file)
+    df_all = pd.concat([xls.parse(sheet) for sheet in xls.sheet_names])
+    return df_all
 
-# Baca setiap sheet & tambahkan kolom Tahun
-sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
-sheet_2025['Tahun'] = 2025
+def group_similar_names(names, threshold=85):
+    groups = []
+    visited = set()
 
-sheet_2024 = pd.read_excel(file, sheet_name="Penilaian 2024")
-sheet_2024['Tahun'] = 2024
+    for name in names:
+        if name in visited:
+            continue
+        group = [name]
+        visited.add(name)
+        matches = process.extract(name, names, scorer=fuzz.token_sort_ratio, score_cutoff=threshold)
+        for match_name, score, _ in matches:
+            if match_name != name and match_name not in visited:
+                group.append(match_name)
+                visited.add(match_name)
+        groups.append(group)
+    return groups
 
-sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
-sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
-sheet_2023['Tahun'] = 2023
+def get_grouped_label(name, name_groups):
+    for group in name_groups:
+        if name in group:
+            return group[0]  # gunakan nama pertama sebagai label grup
+    return name
 
-# Gabungkan semua data
-all_data = pd.concat([
-    sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
-    sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
-    sheet_2023[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]]
-], ignore_index=True)
+st.title("📊 Dashboard Nilai Instruktur")
 
-# Pastikan kolom Rata-Rata numeric
-all_data['Rata-Rata'] = pd.to_numeric(all_data['Rata-Rata'], errors='coerce')
+uploaded_file = st.file_uploader("Unggah file Excel", type=["xls", "xlsx"])
 
-# === 2. Clustering Nama Diklat pakai Embedding ===
-unique_diklat = all_data ["Nama Diklat"].dropna().unique().tolist()
+if uploaded_file:
+    df = load_excel(uploaded_file)
 
-# Load Model embedding
-model = SentenceTransformer("paraphrase-MiniLM-L6-v2", device="cpu")
-embeddings = model.encode(unique_diklat)
+    # Normalisasi kolom
+    df.columns = df.columns.str.strip().str.lower()
 
-# DBSCAN clustering
-clustering = DBSCAN(eps=1.0, min_samples=2, metric='cosine').fit(embeddings)
-labels = clustering.labels_
+    if 'nama diklat' in df.columns and 'mata ajar' in df.columns and 'rata-rata' in df.columns:
+        diklat_names = df['nama diklat'].dropna().unique().tolist()
+        name_groups = group_similar_names(diklat_names)
+        df['grup diklat'] = df['nama diklat'].apply(lambda x: get_grouped_label(x, name_groups))
 
-# Buat mapping nama diklat ke cluster label
-cluster_map = {}
-for label in set(labels):
-    if label == -1:
-        continue
-    indexes = np.where(labels == label)[0]
-    cluster_name = unique_diklat[indexes[0]]
-    for i in indexes:
-        cluster_map [unique_diklat[i]] = cluster_name
+        selected_diklat = st.selectbox("Pilih Grup Diklat", sorted(df['grup diklat'].unique()))
 
-# Diklat yang tidak termasuk cluster tetap pakai nama asli
-for i, nama in enumerate(unique_diklat):
-    if nama not in cluster_map:
-        cluster_map[nama] = nama
+        filtered = df[df['grup diklat'] == selected_diklat]
 
-# Tambahkan ke data
-all_data["Nama Diklat Gabungan"] = all_data["Nama Diklat"].map(cluster_map)
+        st.subheader(f"📚 Data Nilai untuk Diklat: {selected_diklat}")
 
-# === 3. Dropdown Nama Diklat ===
-nama_diklat = st.selectbox("Pilih Nama Diklat", sorted(all_data["Nama Diklat Gabungan"].dropna().unique()))
+        mata_ajar_opsi = filtered['mata ajar'].unique()
+        selected_mata_ajar = st.selectbox("Pilih Mata Ajar", mata_ajar_opsi)
 
-# Filter berdasarkan diklat
-filtered_diklat = all_data[all_data["Nama Diklat Gabungan"] == nama_diklat]
+        nilai_df = filtered[filtered['mata ajar'] == selected_mata_ajar]
+        nilai_df = nilai_df[['nama', 'rata-rata']].dropna()
+        nilai_df = nilai_df.sort_values(by='rata-rata', ascending=False).reset_index(drop=True)
+        nilai_df.index += 1  # untuk ranking mulai dari 1
 
-# === 4. Dropdown Mata Ajar ===
-mata_ajar = st.selectbox("Pilih Mata Ajar", sorted(filtered_diklat['Mata Ajar'].dropna().unique()))
+        st.write("📈 Tabel Nilai Rata-Rata")
+        st.dataframe(nilai_df.rename(columns={"nama": "Nama", "rata-rata": "Nilai"}), use_container_width=True)
 
-# Filter berdasarkan mata ajar
-filtered = filtered_diklat[filtered_diklat['Mata Ajar'] == mata_ajar]
+        # Unduh sebagai Excel
+        def to_excel_download(df):
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False, sheet_name='Ranking')
+            return output.getvalue()
 
-# === 5. Hitung rata-rata dan ranking ===
-pivot = (
-    filtered.groupby(['Tahun', 'Instruktur'])['Rata-Rata']
-    .mean()
-    .reset_index()
-    .dropna()
-)
-
-pivot = pivot.sort_values(by=['Tahun', 'Rata-Rata'], ascending=[False, False])
-pivot['Rank'] = pivot.groupby('Tahun')['Rata-Rata'].rank(method='first', ascending=False).astype(int)
-pivot = pivot.rename(columns={'Rata-Rata': 'Nilai'})
-
-# === 6. Tampilkan hasil ===
-st.write(f"Pengajar dengan nilai rata-rata tertinggi untuk Diklat: **{nama_diklat}**, Mata Ajar: **{mata_ajar}**")
-st.dataframe(pivot[['Tahun', 'Rank', 'Instruktur', 'Nilai']])
+        st.download_button(
+            label="⬇️ Unduh Data sebagai Excel",
+            data=to_excel_download(nilai_df),
+            file_name=f"nilai_{selected_diklat}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    else:
+        st.warning("Kolom 'nama diklat', 'mata ajar', atau 'rata-rata' tidak ditemukan di file.")
