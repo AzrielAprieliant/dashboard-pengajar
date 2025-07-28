@@ -5,44 +5,35 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import pairwise_distances_argmin_min
 from rapidfuzz import process, fuzz
 
-# === KONFIGURASI TAMPILAN STREAMLIT ===
-st.set_page_config(
-    page_title="Dashboard Instruktur",
-    layout="centered",
-    initial_sidebar_state="collapsed",
-)
+# === CONFIGURASI LAYOUT STREAMLIT ===
+st.set_page_config(page_title="Dashboard Instruktur", layout="centered", initial_sidebar_state="collapsed")
 
-st.markdown("""
+st.markdown(
+    """
     <style>
     html, body, [class*="css"]  {
         zoom: 70%;
     }
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
 st.title("📊 Dashboard Penilaian Instruktur")
 
-# === BACA FILE EXCEL ===
-file_penilaian = "data instruktur asli.xlsx"
-file_unitkerja = "nama dan unit kerja.xlsx"
+# === BACA DATA NILAI ===
+file = "data instruktur asli.xlsx"
 
-# Baca data unit kerja
-df_unitkerja = pd.read_excel(file_unitkerja)
-df_unitkerja.columns = df_unitkerja.columns.str.strip()
-df_unitkerja["Nama"] = df_unitkerja["Nama"].astype(str).str.strip().str.lower()
-
-# Baca data penilaian dari 3 tahun
-sheet_2025 = pd.read_excel(file_penilaian, sheet_name="Penilaian Jan Jun 2025")
+sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
 sheet_2025["Tahun"] = 2025
 
-sheet_2024 = pd.read_excel(file_penilaian, sheet_name="Penilaian 2024")
+sheet_2024 = pd.read_excel(file, sheet_name="Penilaian 2024")
 sheet_2024["Tahun"] = 2024
 
-sheet_2023 = pd.read_excel(file_penilaian, sheet_name="Penilaian 2023")
+sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
 sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
 sheet_2023["Tahun"] = 2023
 
-# Gabungkan data
 df = pd.concat([
     sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
     sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
@@ -50,24 +41,30 @@ df = pd.concat([
 ], ignore_index=True)
 
 df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
-df["Instruktur"] = df["Instruktur"].astype(str).str.strip().str.lower()
 
-# === FUZZY MATCH NAMA KE UNIT KERJA ===
-nama_unit_list = df_unitkerja["Nama"].tolist()
-match_results = df["Instruktur"].apply(lambda x: process.extractOne(x, nama_unit_list, scorer=fuzz.token_sort_ratio))
-df["Nama_Cocok"] = match_results.apply(lambda x: x[0] if x else None)
-df["Skor_Kecocokan"] = match_results.apply(lambda x: x[1] if x else None)
+# === BACA FILE UNIT KERJA ===
+df_unitkerja = pd.read_excel("nama dan unit kerja.xlsx")
 
-# Gabungkan dengan data unit kerja
-df = pd.merge(
-    df,
-    df_unitkerja.rename(columns={"Nama": "Nama_Cocok"}),
-    on="Nama_Cocok",
-    how="left"
-)
+# Rename agar konsisten
+df_unitkerja = df_unitkerja.rename(columns={"Nama": "Nama_Unit", "nama unit": "nama unit"})
 
-# === CLUSTERING NAMA DIKLAT ===
+# Fuzzy Matching untuk mencocokkan nama
+def fuzzy_match(nama, list_nama, threshold=60):
+    match, score, _ = process.extractOne(nama, list_nama, scorer=fuzz.token_sort_ratio)
+    if score >= threshold:
+        return match
+    else:
+        return None
+
+df["Nama_Cocok"] = df["Instruktur"].apply(lambda x: fuzzy_match(str(x), df_unitkerja["Nama_Unit"]))
+
+# Merge dengan data unit kerja berdasarkan nama yang cocok
+df = pd.merge(df, df_unitkerja[["Nama_Unit", "nama unit"]], left_on="Nama_Cocok", right_on="Nama_Unit", how="left")
+df = df.rename(columns={"nama unit": "Unit Kerja"})
+
+# === CLUSTER NAMA DIKLAT DENGAN TF-IDF + KMeans ===
 diklat_list = df["Nama Diklat"].dropna().unique().tolist()
+
 vectorizer = TfidfVectorizer(analyzer="word", ngram_range=(1, 2))
 X = vectorizer.fit_transform(diklat_list)
 
@@ -85,24 +82,22 @@ for idx, label in enumerate(labels):
 
 df["Grup Diklat"] = df["Nama Diklat"].map(cluster_map)
 
-# === FILTER: PILIH GRUP DIKLAT ===
+# === DROPDOWN: PILIH DIKLAT ===
 selected_diklat_group = st.selectbox("📌 Grup Diklat", sorted(df["Grup Diklat"].dropna().unique()))
 filtered_df = df[df["Grup Diklat"] == selected_diklat_group]
 
-# === FILTER: PILIH MATA AJAR ===
+# === DROPDOWN: PILIH MATA AJAR ===
 available_mata_ajar = filtered_df["Mata Ajar"].dropna().unique()
 selected_mata_ajar = st.selectbox("📚 Mata Ajar", sorted(available_mata_ajar))
 filtered_df = filtered_df[filtered_df["Mata Ajar"] == selected_mata_ajar]
 
-# === FILTER: PILIH UNIT KERJA (JIKA ADA) ===
+# === DROPDOWN: PILIH UNIT KERJA ===
 available_unit_kerja = filtered_df["Unit Kerja"].dropna().unique()
 if len(available_unit_kerja) > 0:
     selected_unit_kerja = st.selectbox("🏢 Unit Kerja", sorted(available_unit_kerja))
     filtered_df = filtered_df[filtered_df["Unit Kerja"] == selected_unit_kerja]
-else:
-    st.warning("⚠️ Tidak ditemukan Unit Kerja yang cocok untuk kombinasi ini.")
 
-# === RANKING PER TAHUN ===
+# === RANKING NILAI ===
 if not filtered_df.empty:
     grouped = (
         filtered_df.groupby(["Instruktur", "Tahun"])["Rata-Rata"]
@@ -110,7 +105,6 @@ if not filtered_df.empty:
         .reset_index()
         .rename(columns={"Rata-Rata": "Nilai"})
     )
-
     grouped = grouped.sort_values(by=["Tahun", "Nilai"], ascending=[False, False])
     grouped["Rank"] = grouped.groupby("Tahun")["Nilai"].rank(method="first", ascending=False).astype(int)
 
