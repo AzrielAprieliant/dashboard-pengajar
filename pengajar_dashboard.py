@@ -5,27 +5,6 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import pairwise_distances_argmin_min
 from rapidfuzz import process, fuzz
 
-# === CONFIGURASI LAYOUT STREAMLIT ===
-st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
-
-st.markdown(
-    """
-    <style>
-    html, body, [class*="css"]  {
-        zoom: 100%;
-    }
-    /* Paksa dataframe lebar penuh */
-    div[data-testid="stDataFrame"] {
-        width: 100% !important;
-    }
-    .element-container:has(.stDataFrame) {
-        overflow-x: auto;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
 st.title("📊 Dashboard Penilaian Instruktur")
 
 # === BACA DATA NILAI ===
