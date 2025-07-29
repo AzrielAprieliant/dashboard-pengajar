@@ -77,10 +77,16 @@ if selected_unit_kerja != "(Tampilkan Semua)":
 # === TAMPILKAN DATA HASIL ===
 if not filtered_df.empty:
     st.markdown("### 🔍 Hasil Data:")
+
+    # Hitung tinggi tabel dinamis berdasarkan jumlah baris (maks 600px)
+    row_height = 40
+    max_height = 600
+    dynamic_height = min(row_height * len(filtered_df), max_height)
+    
     st.dataframe(
         filtered_df[["Instruktur", "Mata Ajar", "Nama Diklat", "Tahun", "Unit Kerja", "Rata-Rata"]],
         use_container_width=True,
-        height=500
+        height=dynamic_height
     )
 
     # === DOWNLOAD BUTTON ===
