@@ -10,7 +10,7 @@ st.set_page_config(page_title="Dashboard Instruktur", layout="centered", initial
 st.markdown("""
 <style>
 html, body, [class*="css"]  {
-    zoom: 70%;
+    zoom: 80%;
 }
 </style>
 """, unsafe_allow_html=True)
