@@ -22,6 +22,9 @@ div[data-testid="stDataFrame"] {
 
 st.title("📊 Dashboard Penilaian Instruktur")
 
+# Tampilkan tabel dengan lebar menyesuaikan isi
+st.dataframe(df, use_container_width=False)
+
 # === CEK KEBERADAAN FILE ===
 file = "Data Instruktur asli.xlsx"
 unit_file = "Nama dan Unit Kerja.xlsx"
