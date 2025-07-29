@@ -57,7 +57,7 @@ df["Nama_Cocok"] = df["Instruktur"].apply(lambda x: fuzzy_match(str(x), df_unit[
 df = pd.merge(df, df_unit[["Nama_Unit", "Nama Unit"]], left_on="Nama_Cocok", right_on="Nama_Unit", how="left")
 df = df.rename(columns={"Nama Unit": "Unit Kerja"})
 
-# === DROPDOWN: PILIH NAMA DIKLAT (TANPA CLUSTER) ===
+# === DROPDOWN: PILIH NAMA DIKLAT ===
 selected_diklat = st.selectbox("📌 Nama Diklat", sorted(df["Nama Diklat"].dropna().unique()))
 filtered_df = df[df["Nama Diklat"] == selected_diklat]
 
@@ -79,7 +79,7 @@ if not filtered_df.empty:
     st.markdown("### 🔍 Hasil Data:")
     st.dataframe(
         filtered_df[["Instruktur", "Mata Ajar", "Nama Diklat", "Tahun", "Unit Kerja", "Rata-Rata"]],
-        use_container_width=True,
+        use_container_width=False,
         height=500
     )
 
