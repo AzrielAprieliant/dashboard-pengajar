@@ -7,6 +7,25 @@ from rapidfuzz import process, fuzz
 # === CONFIGURASI STREAMLIT ===
 st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
 
+st.markdown("""
+    <style>
+    div[data-baseweb="select"] > div {
+        font-size: 13px !important;
+        padding: 4px 8px !important;
+    }
+
+    label[data-testid="stMarkdownContainer"] > div {
+        font-size: 14px !important;
+        margin-bottom: 4px !important;
+    }
+
+    section[data-testid="stSidebar"] > div {
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("📊 Dashboard Penilaian Instruktur")
 
 
