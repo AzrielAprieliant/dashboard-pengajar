@@ -74,24 +74,6 @@ df["Nama_Cocok"] = df["Instruktur"].apply(lambda x: fuzzy_match(str(x), df_unitk
 df = pd.merge(df, df_unitkerja[["Nama_Unit", "Nama Unit"]], left_on="Nama_Cocok", right_on="Nama_Unit", how="left")
 df = df.rename(columns={"Nama Unit": "Unit Kerja"})
 
-# === CLUSTER NAMA DIKLAT DENGAN TF-IDF + KMeans ===
-diklat_list = df["Nama Diklat"].dropna().unique().tolist()
-vectorizer = TfidfVectorizer(analyzer="word", ngram_range=(1, 2))
-X = vectorizer.fit_transform(diklat_list)
-
-n_clusters = min(len(diklat_list), 15)
-model = KMeans(n_clusters=n_clusters, random_state=42, n_init="auto")
-model.fit(X)
-
-labels = model.labels_
-closest, _ = pairwise_distances_argmin_min(model.cluster_centers_, X)
-
-cluster_map = {}
-for idx, label in enumerate(labels):
-    cluster_name = diklat_list[closest[label]]
-    cluster_map[diklat_list[idx]] = cluster_name
-
-df["Grup Diklat"] = df["Nama Diklat"].map(cluster_map)
 
 # === DROPDOWN: PILIH DIKLAT ===
 selected_diklat_group = st.selectbox("📌 Nama Diklat", sorted(df["Grup Diklat"].dropna().unique()))
