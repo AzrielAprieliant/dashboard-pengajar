@@ -44,9 +44,7 @@ df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
 
 # === BACA FILE UNIT KERJA ===
 df_unitkerja = pd.read_excel("nama dan unit kerja.xlsx")
-
-# Rename agar konsisten
-df_unitkerja = df_unitkerja.rename(columns={"Nama": "Nama_Unit", "nama unit": "nama unit"})
+df_unitkerja = df_unitkerja.rename(columns={"Nama": "Nama_Unit", "nama unit": "Nama Unit"})
 
 # Fuzzy Matching untuk mencocokkan nama
 def fuzzy_match(nama, list_nama, threshold=60):
@@ -58,15 +56,12 @@ def fuzzy_match(nama, list_nama, threshold=60):
 
 df["Nama_Cocok"] = df["Instruktur"].apply(lambda x: fuzzy_match(str(x), df_unitkerja["Nama_Unit"]))
 
-# Merge dengan data unit kerja berdasarkan nama yang cocok
-df = pd.merge(df, df_unitkerja[["Nama_Unit", "nama unit"]], left_on="Nama_Cocok", right_on="Nama_Unit", how="left")
-df = df.rename(columns={"nama unit": "Unit Kerja"})
-
-st.write(df[["Instruktur", "Nama_Cocok, "Unit Kerja"]].drop_duplicat())
+# Merge dengan unit kerja
+df = pd.merge(df, df_unitkerja[["Nama_Unit", "Nama Unit"]], left_on="Nama_Cocok", right_on="Nama_Unit", how="left")
+df = df.rename(columns={"Nama Unit": "Unit Kerja"})
 
 # === CLUSTER NAMA DIKLAT DENGAN TF-IDF + KMeans ===
 diklat_list = df["Nama Diklat"].dropna().unique().tolist()
-
 vectorizer = TfidfVectorizer(analyzer="word", ngram_range=(1, 2))
 X = vectorizer.fit_transform(diklat_list)
 
