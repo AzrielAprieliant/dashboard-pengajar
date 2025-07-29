@@ -1,5 +1,5 @@
 streamlit
 pandas
 openpyxl
-skicit-learn
+scikit-learn
 rapidfuzz
