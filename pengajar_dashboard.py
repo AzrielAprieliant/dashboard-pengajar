@@ -79,7 +79,7 @@ if not filtered_df.empty:
     st.markdown("### 🔍 Hasil Data:")
     st.dataframe(
         filtered_df[["Instruktur", "Mata Ajar", "Nama Diklat", "Tahun", "Unit Kerja", "Rata-Rata"]],
-        use_container_width=False,
+        use_container_width=True,
         height=500
     )
 
