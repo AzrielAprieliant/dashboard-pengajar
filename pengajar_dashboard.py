@@ -8,24 +8,6 @@ from rapidfuzz import process, fuzz
 # === CONFIGURASI LAYOUT STREAMLIT ===
 st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
 
-st.markdown(
-    """
-    <style>
-    html, body, [class*="css"]  {
-        zoom: 100%;
-    }
-    /* Paksa dataframe lebar penuh */
-    div[data-testid="stDataFrame"] {
-        width: 100% !important;
-    }
-    .element-container:has(.stDataFrame) {
-        overflow-x: auto;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
 st.title("📊 Dashboard Penilaian Instruktur")
 
 # === BACA DATA NILAI ===
@@ -110,18 +92,3 @@ if not filtered_df.empty:
         use_container_width=True,
         height=500
     )
-
-    # === RANKING NILAI ===
-    grouped = (
-        filtered_df.groupby(["Instruktur", "Tahun"])["Rata-Rata"]
-        .mean()
-        .reset_index()
-        .rename(columns={"Rata-Rata": "Nilai"})
-    )
-    grouped = grouped.sort_values(by=["Tahun", "Nilai"], ascending=[False, False])
-    grouped["Rank"] = grouped.groupby("Tahun")["Nilai"].rank(method="first", ascending=False).astype(int)
-
-    st.markdown("### 🏅 Ranking Instruktur")
-    st.dataframe(grouped[["Tahun", "Rank", "Instruktur", "Nilai"]], use_container_width=True)
-else:
-    st.warning("Data tidak ditemukan untuk kombinasi yang dipilih.")
