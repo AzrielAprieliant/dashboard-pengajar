@@ -79,7 +79,7 @@ if not filtered_df.empty:
     st.markdown("### 🔍 Hasil Data:")
 
     # Hitung tinggi tabel dinamis berdasarkan jumlah baris (maks 600px)
-    row_height = 500
+    row_height = 100
     max_height = 600
     dynamic_height = min(row_height * len(filtered_df), max_height)
     
