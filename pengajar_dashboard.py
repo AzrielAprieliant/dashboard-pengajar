@@ -80,7 +80,7 @@ if not filtered_df.empty:
     st.dataframe(
         filtered_df[["Instruktur", "Mata Ajar", "Nama Diklat", "Tahun", "Unit Kerja", "Rata-Rata"]],
         use_container_width=True,
-        height=300
+        height=500
     )
 
     # === DOWNLOAD BUTTON ===
