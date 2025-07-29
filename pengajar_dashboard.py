@@ -5,7 +5,7 @@ import io
 from rapidfuzz import process, fuzz
 
 # === CONFIGURASI STREAMLIT ===
-st.set_page_config(page_title="Dashboard Instruktur", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
 
 st.title("📊 Dashboard Penilaian Instruktur")
 
@@ -80,7 +80,7 @@ if not filtered_df.empty:
     st.dataframe(
         filtered_df[["Instruktur", "Mata Ajar", "Nama Diklat", "Tahun", "Unit Kerja", "Rata-Rata"]],
         use_container_width=True,
-        height=500
+        height=300
     )
 
     # === DOWNLOAD BUTTON ===
