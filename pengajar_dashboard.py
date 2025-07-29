@@ -81,6 +81,9 @@ if not filtered_df.empty:
         # Urutkan berdasarkan nilai rata-rata (tertinggi ke terendah)
     filtered_df = filtered_df.sort_values(by="Rata-Rata", ascending=False)
 
+        # Tambahkan kolom ranking
+    filtered_df["Ranking"] = filtered_df["Rata-Rata"].rank(ascending=False, method="min").astype(int)
+
     # Hitung tinggi tabel dinamis berdasarkan jumlah baris (maks 600px)
     row_height = 100
     max_height = 600
