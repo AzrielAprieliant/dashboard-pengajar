@@ -118,14 +118,6 @@ if not filtered_df.empty:
         height=500
     )
 
-    # Tampilkan ranking berdasarkan Rata-Rata
-    st.markdown("### 🏆 Ranking Instruktur (Berdasarkan Rata-Rata Nilai)")
-    grouped = filtered_df.groupby(["Instruktur", "Tahun"], as_index=False)["Rata-Rata"].mean()
-    grouped = grouped.sort_values(by="Rata-Rata", ascending=False)
-    grouped["Rank"] = grouped.groupby("Tahun")["Rata-Rata"].rank(ascending=False, method="dense").astype(int)
-    grouped = grouped[["Rank", "Instruktur", "Tahun", "Rata-Rata"]]
-    st.dataframe(grouped, use_container_width=True, height=350)
-
     # Tombol unduh
     st.markdown("### ⬇️ Unduh Data Hasil")
     to_download = filtered_df[["Instruktur", "Mata Ajar", "Nama Diklat", "Tahun", "Unit Kerja", "Rata-Rata"]]
