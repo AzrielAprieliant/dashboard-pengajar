@@ -22,7 +22,7 @@ st.markdown("""
 st.title("📊 Dashboard Penilaian Instruktur")
 
 # === BACA DATA NILAI ===
-file = "data instruktur asli.xlsx"
+file = "Data Instruktur asli.xlsx"
 
 sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
 sheet_2025["Tahun"] = 2025
