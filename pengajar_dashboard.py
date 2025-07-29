@@ -7,19 +7,6 @@ from rapidfuzz import process, fuzz
 # === CONFIGURASI STREAMLIT ===
 st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
 
-# === CSS TAMBAHAN UNTUK MELEBARKAN TABEL ===
-st.markdown("""
-<style>
-div[data-testid="stDataFrame"] {
-    width: 100% !important;
-    overflow-x: auto;
-}
-.element-container:has(.stDataFrame) {
-    overflow-x: auto;
-}
-</style>
-""", unsafe_allow_html=True)
-
 st.title("📊 Dashboard Penilaian Instruktur")
 
 
