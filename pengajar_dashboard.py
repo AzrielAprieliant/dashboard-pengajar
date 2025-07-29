@@ -6,18 +6,25 @@ from sklearn.metrics import pairwise_distances_argmin_min
 from rapidfuzz import process, fuzz
 
 # === CONFIGURASI LAYOUT STREAMLIT ===
-st.set_page_config(page_title="Dashboard Instruktur", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
 
-st.markdown("""
+st.markdown(
+    """
     <style>
     html, body, [class*="css"]  {
         zoom: 80%;
+    }
+    /* Paksa dataframe lebar penuh */
+    div[data-testid="stDataFrame"] {
+        width: 100% !important;
     }
     .element-container:has(.stDataFrame) {
         overflow-x: auto;
     }
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
 st.title("📊 Dashboard Penilaian Instruktur")
 
@@ -34,6 +41,7 @@ sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
 sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
 sheet_2023["Tahun"] = 2023
 
+# Gabungkan semua tahun
 df = pd.concat([
     sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
     sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
@@ -46,7 +54,8 @@ df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
 df_unitkerja = pd.read_excel("Nama dan Unit Kerja.xlsx")
 df_unitkerja = df_unitkerja.rename(columns={"Nama": "Nama_Unit", "nama unit": "Nama Unit"})
 
-# Fuzzy Matching untuk mencocokkan nama
+# Fuzzy Matching
+
 def fuzzy_match(nama, list_nama, threshold=60):
     match, score, _ = process.extractOne(nama, list_nama, scorer=fuzz.token_sort_ratio)
     if score >= threshold:
@@ -55,8 +64,6 @@ def fuzzy_match(nama, list_nama, threshold=60):
         return None
 
 df["Nama_Cocok"] = df["Instruktur"].apply(lambda x: fuzzy_match(str(x), df_unitkerja["Nama_Unit"]))
-
-# Merge dengan unit kerja
 df = pd.merge(df, df_unitkerja[["Nama_Unit", "Nama Unit"]], left_on="Nama_Cocok", right_on="Nama_Unit", how="left")
 df = df.rename(columns={"Nama Unit": "Unit Kerja"})
 
@@ -95,7 +102,7 @@ selected_unit_kerja = st.selectbox("🏢 Unit Kerja", available_unit_kerja)
 if selected_unit_kerja != "(Tampilkan Semua)":
     filtered_df = filtered_df[filtered_df["Unit Kerja"] == selected_unit_kerja]
 
-# === TAMPILKAN HASIL DATA ===
+# === TAMPILKAN HASIL ===
 if not filtered_df.empty:
     st.markdown("### 🔍 Hasil Data:")
     st.dataframe(
@@ -104,31 +111,17 @@ if not filtered_df.empty:
         height=500
     )
 
-    if filtered_df["Rata-Rata"].notna().sum() > 0:
-        grouped = (
-            filtered_df.groupby("Instruktur")["Rata-Rata"]
-            .mean()
-            .reset_index()
-            .rename(columns={"Rata-Rata": "Nilai"})
-        )
+    # === RANKING NILAI ===
+    grouped = (
+        filtered_df.groupby(["Instruktur", "Tahun"])["Rata-Rata"]
+        .mean()
+        .reset_index()
+        .rename(columns={"Rata-Rata": "Nilai"})
+    )
+    grouped = grouped.sort_values(by=["Tahun", "Nilai"], ascending=[False, False])
+    grouped["Rank"] = grouped.groupby("Tahun")["Nilai"].rank(method="first", ascending=False).astype(int)
 
-        tahun_instruktur = (
-            filtered_df.groupby("Instruktur")["Tahun"]
-            .apply(lambda x: ", ".join(str(t) for t in sorted(x.unique())))
-            .reset_index()
-        )
-
-        grouped = pd.merge(grouped, tahun_instruktur, on="Instruktur")
-        grouped = grouped.sort_values(by="Nilai", ascending=False)
-        grouped["Rank"] = grouped["Nilai"].rank(method="first", ascending=False).astype(int)
-
-        st.markdown("### 🏆 Ranking Instruktur (Berdasarkan Rata-Rata Nilai)")
-        st.dataframe(
-            grouped[["Rank", "Instruktur", "Tahun", "Nilai"]],
-            use_container_width=True,
-            height=500
-        )
-    else:
-        st.warning("⚠️ Nilai belum tersedia untuk instruktur ini.")
+    st.markdown("### 🏅 Ranking Instruktur")
+    st.dataframe(grouped[["Tahun", "Rank", "Instruktur", "Nilai"]], use_container_width=True)
 else:
     st.warning("Data tidak ditemukan untuk kombinasi yang dipilih.")
