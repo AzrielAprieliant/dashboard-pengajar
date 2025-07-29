@@ -5,20 +5,24 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import pairwise_distances_argmin_min
 from rapidfuzz import process, fuzz
 
+# === CONFIGURASI LAYOUT STREAMLIT ===
 st.set_page_config(page_title="Dashboard Instruktur", layout="centered", initial_sidebar_state="collapsed")
 
 st.markdown("""
-<style>
-html, body, [class*="css"]  {
-    zoom: 80%;
-}
-</style>
+    <style>
+    html, body, [class*="css"]  {
+        zoom: 80%;
+    }
+    .element-container:has(.stDataFrame) {
+        overflow-x: auto;
+    }
+    </style>
 """, unsafe_allow_html=True)
 
 st.title("📊 Dashboard Penilaian Instruktur")
 
 # === BACA DATA NILAI ===
-file = "Data Instruktur asli.xlsx"
+file = "data instruktur asli.xlsx"
 
 sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
 sheet_2025["Tahun"] = 2025
@@ -42,16 +46,21 @@ df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
 df_unitkerja = pd.read_excel("Nama dan Unit Kerja.xlsx")
 df_unitkerja = df_unitkerja.rename(columns={"Nama": "Nama_Unit", "nama unit": "Nama Unit"})
 
-# === FUZZY MATCHING UNIT KERJA ===
+# Fuzzy Matching untuk mencocokkan nama
 def fuzzy_match(nama, list_nama, threshold=60):
     match, score, _ = process.extractOne(nama, list_nama, scorer=fuzz.token_sort_ratio)
-    return match if score >= threshold else None
+    if score >= threshold:
+        return match
+    else:
+        return None
 
 df["Nama_Cocok"] = df["Instruktur"].apply(lambda x: fuzzy_match(str(x), df_unitkerja["Nama_Unit"]))
+
+# Merge dengan unit kerja
 df = pd.merge(df, df_unitkerja[["Nama_Unit", "Nama Unit"]], left_on="Nama_Cocok", right_on="Nama_Unit", how="left")
 df = df.rename(columns={"Nama Unit": "Unit Kerja"})
 
-# === CLUSTERING NAMA DIKLAT ===
+# === CLUSTER NAMA DIKLAT DENGAN TF-IDF + KMeans ===
 diklat_list = df["Nama Diklat"].dropna().unique().tolist()
 vectorizer = TfidfVectorizer(analyzer="word", ngram_range=(1, 2))
 X = vectorizer.fit_transform(diklat_list)
@@ -70,29 +79,29 @@ for idx, label in enumerate(labels):
 
 df["Grup Diklat"] = df["Nama Diklat"].map(cluster_map)
 
-# === DROPDOWN: GRUP DIKLAT ===
+# === DROPDOWN: PILIH DIKLAT ===
 selected_diklat_group = st.selectbox("📌 Nama Diklat", sorted(df["Grup Diklat"].dropna().unique()))
 filtered_df = df[df["Grup Diklat"] == selected_diklat_group]
 
-# === DROPDOWN: MATA AJAR ===
+# === DROPDOWN: PILIH MATA AJAR ===
 available_mata_ajar = filtered_df["Mata Ajar"].dropna().unique()
 selected_mata_ajar = st.selectbox("📘 Mata Ajar", sorted(available_mata_ajar))
 filtered_df = filtered_df[filtered_df["Mata Ajar"] == selected_mata_ajar]
 
-# === DROPDOWN: UNIT KERJA ===
-available_unit_kerja = filtered_df["Unit Kerja"].dropna().unique()
-if len(available_unit_kerja) > 0:
-    unit_options = ["(Tampilkan Semua)"] + sorted(available_unit_kerja)
-    selected_unit_kerja = st.selectbox("🏢 Unit Kerja", unit_options)
-    if selected_unit_kerja != "(Tampilkan Semua)":
-        filtered_df = filtered_df[filtered_df["Unit Kerja"] == selected_unit_kerja]
+# === DROPDOWN: PILIH UNIT KERJA ===
+available_unit_kerja = filtered_df["Unit Kerja"].dropna().unique().tolist()
+available_unit_kerja.insert(0, "(Tampilkan Semua)")
+selected_unit_kerja = st.selectbox("🏢 Unit Kerja", available_unit_kerja)
+if selected_unit_kerja != "(Tampilkan Semua)":
+    filtered_df = filtered_df[filtered_df["Unit Kerja"] == selected_unit_kerja]
 
-# === HASIL & RANKING ===
+# === TAMPILKAN HASIL DATA ===
 if not filtered_df.empty:
     st.markdown("### 🔍 Hasil Data:")
     st.dataframe(
         filtered_df[["Instruktur", "Mata Ajar", "Nama Diklat", "Tahun", "Unit Kerja", "Rata-Rata"]],
-        use_container_width=True
+        use_container_width=True,
+        height=500
     )
 
     if filtered_df["Rata-Rata"].notna().sum() > 0:
@@ -114,8 +123,12 @@ if not filtered_df.empty:
         grouped["Rank"] = grouped["Nilai"].rank(method="first", ascending=False).astype(int)
 
         st.markdown("### 🏆 Ranking Instruktur (Berdasarkan Rata-Rata Nilai)")
-        st.dataframe(grouped[["Rank", "Instruktur", "Tahun", "Nilai"]], use_container_width=True)
+        st.dataframe(
+            grouped[["Rank", "Instruktur", "Tahun", "Nilai"]],
+            use_container_width=True,
+            height=500
+        )
     else:
-        st.warning("⚠️ Tidak ada nilai rata-rata yang tersedia untuk data ini.")
+        st.warning("⚠️ Nilai belum tersedia untuk instruktur ini.")
 else:
-    st.warning("⚠️ Data kosong. Coba pilih kombinasi Diklat, Mata Ajar, atau Unit Kerja yang berbeda.")
+    st.warning("Data tidak ditemukan untuk kombinasi yang dipilih.")
