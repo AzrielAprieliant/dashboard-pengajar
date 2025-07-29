@@ -11,7 +11,7 @@ st.set_page_config(page_title="Dashboard Instruktur", layout="centered", initial
 st.markdown("""
 <style>
 html, body, [class*="css"]  {
-    zoom: 70%;
+    zoom: 75%;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -75,7 +75,7 @@ for idx, label in enumerate(labels):
 df["Grup Diklat"] = df["Nama Diklat"].map(cluster_map)
 
 # === DROPDOWN: GRUP DIKLAT ===
-selected_diklat_group = st.selectbox("📌 Grup Diklat", sorted(df["Grup Diklat"].dropna().unique()))
+selected_diklat_group = st.selectbox("📌 Nama Diklat", sorted(df["Grup Diklat"].dropna().unique()))
 filtered_df = df[df["Grup Diklat"] == selected_diklat_group]
 
 # === DROPDOWN: MATA AJAR ===
@@ -95,20 +95,36 @@ if len(available_unit_kerja) > 0:
 
 # === DEBUG: TAMPILKAN DATA YANG DIFILTER ===
 if not filtered_df.empty:
-    st.markdown("#### 🔍 Data yang difilter:")
+    st.markdown("#### 🔍 Hasil Data:")
     st.dataframe(filtered_df, use_container_width=True)
 
     # === RANKING ===
+   if not filtered_df.empty:
+    st.markdown("#### 🔍 Data yang difilter:")
+    st.dataframe(filtered_df, use_container_width=True)
+
+    # Hitung nilai rata-rata per instruktur
     grouped = (
-        filtered_df.groupby(["Instruktur", "Tahun"])["Rata-Rata"]
+        filtered_df.groupby("Instruktur")["Rata-Rata"]
         .mean()
         .reset_index()
         .rename(columns={"Rata-Rata": "Nilai"})
     )
-    grouped = grouped.sort_values(by=["Tahun", "Nilai"], ascending=[False, False])
-    grouped["Rank"] = grouped.groupby("Tahun")["Nilai"].rank(method="first", ascending=False).astype(int)
 
-    st.markdown("### 📈 Ranking Instruktur")
-    st.dataframe(grouped[["Tahun", "Rank", "Instruktur", "Nilai"]], use_container_width=True)
-else:
-    st.warning("⚠️ Data kosong. Coba pilih kombinasi Diklat, Mata Ajar, atau Unit Kerja yang berbeda.")
+    # Ambil tahun-tahun yang pernah diajar oleh setiap instruktur
+    tahun_instruktur = (
+        filtered_df.groupby("Instruktur")["Tahun"]
+        .apply(lambda x: ", ".join(str(t) for t in sorted(x.unique())))
+        .reset_index()
+    )
+
+    # Gabungkan info tahun
+    grouped = pd.merge(grouped, tahun_instruktur, on="Instruktur")
+
+    # Urutkan berdasarkan nilai tertinggi dan beri ranking
+    grouped = grouped.sort_values(by="Nilai", ascending=False)
+    grouped["Rank"] = grouped["Nilai"].rank(method="first", ascending=False).astype(int)
+
+    # Tampilkan hasil
+    st.markdown("### 🏆 Ranking Instruktur (Rata-Rata Tertinggi)")
+    st.dataframe(grouped[["Rank", "Instruktur", "Tahun", "Nilai"]], use_container_width=True)
