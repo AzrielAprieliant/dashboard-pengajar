@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import os
+import io
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 from sklearn.metrics import pairwise_distances_argmin_min
@@ -8,11 +10,34 @@ from rapidfuzz import process, fuzz
 # === CONFIGURASI LAYOUT STREAMLIT ===
 st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
 
+# === CSS TAMBAHAN ===
+st.markdown("""
+<style>
+div[data-testid="stDataFrame"] {
+    width: 100% !important;
+    overflow-x: auto;
+}
+.element-container:has(.stDataFrame) {
+    overflow-x: auto;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.title("📊 Dashboard Penilaian Instruktur")
 
-# === BACA DATA NILAI ===
+# === CEK FILE ADA ===
 file = "Data Instruktur asli.xlsx"
+unit_file = "Nama dan Unit Kerja.xlsx"
 
+if not os.path.exists(file):
+    st.error(f"❌ File '{file}' tidak ditemukan. Harap pastikan file diunggah ke direktori.")
+    st.stop()
+
+if not os.path.exists(unit_file):
+    st.error("❌ File 'Nama dan Unit Kerja.xlsx' tidak ditemukan. Harap pastikan file diunggah ke direktori.")
+    st.stop()
+
+# === BACA DATA NILAI ===
 sheet_2025 = pd.read_excel(file, sheet_name="Penilaian Jan Jun 2025")
 sheet_2025["Tahun"] = 2025
 
@@ -31,13 +56,13 @@ df = pd.concat([
 ], ignore_index=True)
 
 df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
+df = df.dropna(subset=["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata"])
 
 # === BACA FILE UNIT KERJA ===
-df_unitkerja = pd.read_excel("Nama dan Unit Kerja.xlsx")
+df_unitkerja = pd.read_excel(unit_file)
 df_unitkerja = df_unitkerja.rename(columns={"Nama": "Nama_Unit", "nama unit": "Nama Unit"})
 
 # Fuzzy Matching
-
 def fuzzy_match(nama, list_nama, threshold=60):
     match, score, _ = process.extractOne(nama, list_nama, scorer=fuzz.token_sort_ratio)
     if score >= threshold:
@@ -92,3 +117,25 @@ if not filtered_df.empty:
         use_container_width=True,
         height=500
     )
+
+    # Tampilkan ranking berdasarkan Rata-Rata
+    st.markdown("### 🏆 Ranking Instruktur (Berdasarkan Rata-Rata Nilai)")
+    grouped = filtered_df.groupby(["Instruktur", "Tahun"], as_index=False)["Rata-Rata"].mean()
+    grouped = grouped.sort_values(by="Rata-Rata", ascending=False)
+    grouped["Rank"] = grouped.groupby("Tahun")["Rata-Rata"].rank(ascending=False, method="dense").astype(int)
+    grouped = grouped[["Rank", "Instruktur", "Tahun", "Rata-Rata"]]
+    st.dataframe(grouped, use_container_width=True, height=350)
+
+    # Tombol unduh
+    st.markdown("### ⬇️ Unduh Data Hasil")
+    to_download = filtered_df[["Instruktur", "Mata Ajar", "Nama Diklat", "Tahun", "Unit Kerja", "Rata-Rata"]]
+    excel_buffer = io.BytesIO()
+    to_download.to_excel(excel_buffer, index=False, sheet_name="Hasil")
+    st.download_button(
+        label="Unduh Hasil ke Excel",
+        data=excel_buffer.getvalue(),
+        file_name="hasil_penilaian_instruktur.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+else:
+    st.warning("⚠️ Tidak ada data ditemukan untuk filter yang dipilih.")
