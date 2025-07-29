@@ -12,7 +12,7 @@ st.markdown(
     """
     <style>
     html, body, [class*="css"]  {
-        zoom: 90%;
+        zoom: 100%;
     }
     /* Paksa dataframe lebar penuh */
     div[data-testid="stDataFrame"] {
