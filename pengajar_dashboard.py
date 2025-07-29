@@ -78,6 +78,9 @@ if selected_unit_kerja != "(Tampilkan Semua)":
 if not filtered_df.empty:
     st.markdown("### 🔍 Hasil Data:")
 
+        # Urutkan berdasarkan nilai rata-rata (tertinggi ke terendah)
+    filtered_df = filtered_df.sort_values(by="Rata-Rata", ascending=False)
+
     # Hitung tinggi tabel dinamis berdasarkan jumlah baris (maks 600px)
     row_height = 100
     max_height = 600
