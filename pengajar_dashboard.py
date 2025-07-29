@@ -30,11 +30,11 @@ file = "Data Instruktur asli.xlsx"
 unit_file = "Nama dan Unit Kerja.xlsx"
 
 if not os.path.exists(file):
-    st.error(f"❌ File '{file}' tidak ditemukan. Harap pastikan file diunggah ke direktori.")
+    st.error(f"❌ File '{file}' tidak ditemukan.")
     st.stop()
 
 if not os.path.exists(unit_file):
-    st.error("❌ File 'Nama dan Unit Kerja.xlsx' tidak ditemukan. Harap pastikan file diunggah ke direktori.")
+    st.error("❌ File 'Nama dan Unit Kerja.xlsx' tidak ditemukan.")
     st.stop()
 
 # === BACA DATA NILAI ===
@@ -48,7 +48,6 @@ sheet_2023 = pd.read_excel(file, sheet_name="Penilaian 2023")
 sheet_2023 = sheet_2023.rename(columns={"Instruktur /WI": "Instruktur", "Rata2": "Rata-Rata"})
 sheet_2023["Tahun"] = 2023
 
-# Gabungkan semua tahun
 df = pd.concat([
     sheet_2025[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
     sheet_2024[["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata", "Tahun"]],
@@ -62,18 +61,31 @@ df = df.dropna(subset=["Instruktur", "Mata Ajar", "Nama Diklat", "Rata-Rata"])
 df_unitkerja = pd.read_excel(unit_file)
 df_unitkerja = df_unitkerja.rename(columns={"Nama": "Nama_Unit", "nama unit": "Nama Unit"})
 
-# Fuzzy Matching
+# === FUZZY MATCHING ===
 def fuzzy_match(nama, list_nama, threshold=60):
     match, score, _ = process.extractOne(nama, list_nama, scorer=fuzz.token_sort_ratio)
-    if score >= threshold:
-        return match
-    else:
-        return None
+    return match if score >= threshold else None
 
 df["Nama_Cocok"] = df["Instruktur"].apply(lambda x: fuzzy_match(str(x), df_unitkerja["Nama_Unit"]))
 df = pd.merge(df, df_unitkerja[["Nama_Unit", "Nama Unit"]], left_on="Nama_Cocok", right_on="Nama_Unit", how="left")
 df = df.rename(columns={"Nama Unit": "Unit Kerja"})
 
+# === CLUSTERING DIKLAT: TF-IDF + KMEANS ===
+diklat_list = df["Nama Diklat"].dropna().unique().tolist()
+vectorizer = TfidfVectorizer(analyzer="word", ngram_range=(1, 2))
+X = vectorizer.fit_transform(diklat_list)
+
+n_clusters = min(len(diklat_list), 15)
+model = KMeans(n_clusters=n_clusters, random_state=42, n_init="auto")
+model.fit(X)
+
+closest, _ = pairwise_distances_argmin_min(model.cluster_centers_, X)
+cluster_map = {}
+for idx, label in enumerate(model.labels_):
+    cluster_name = diklat_list[closest[label]]
+    cluster_map[diklat_list[idx]] = cluster_name
+
+df["Grup Diklat"] = df["Nama Diklat"].map(cluster_map)
 
 # === DROPDOWN: PILIH DIKLAT ===
 selected_diklat_group = st.selectbox("📌 Nama Diklat", sorted(df["Grup Diklat"].dropna().unique()))
@@ -100,7 +112,7 @@ if not filtered_df.empty:
         height=500
     )
 
-    # Tombol unduh
+    # UNDUH DATA
     st.markdown("### ⬇️ Unduh Data Hasil")
     to_download = filtered_df[["Instruktur", "Mata Ajar", "Nama Diklat", "Tahun", "Unit Kerja", "Rata-Rata"]]
     excel_buffer = io.BytesIO()
