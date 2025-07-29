@@ -5,7 +5,7 @@ import io
 from rapidfuzz import process, fuzz
 
 # === CONFIGURASI STREAMLIT ===
-st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Dashboard Instruktur", layout="centered", initial_sidebar_state="collapsed")
 
 st.title("📊 Dashboard Penilaian Instruktur")
 
