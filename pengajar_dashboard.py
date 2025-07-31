@@ -5,7 +5,6 @@ st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sid
 
 # Tampilkan judul utama duluan
 st.title("📊 Dashboard Penilaian Instruktur")
-st.markdown("## 🎛️ Filter Data")
 
 # Load data
 df = pd.read_excel("Penilaian Gabung dengan Nama Unit.xlsx")
@@ -26,9 +25,6 @@ if mata_ajar != "Semua":
 
 if unit_kerja != "Semua":
     filtered_df = filtered_df[filtered_df["Nama Unit"] == unit_kerja]
-
-# Tampilkan judul
-st.title("📊 Dashboard Penilaian Instruktur")
 
 if not filtered_df.empty:
     # Urutkan dan tambahkan kolom peringkat
