@@ -35,7 +35,7 @@ if not filtered_df.empty:
     
     st.markdown(f"### 📋 Tabel Peringkat Instruktur")
     st.dataframe(top_instruktur[[
-        "Peringkat", "Instruktur", "Mata Ajar", "Nama Diklat", "Nama Unit", "Rata-Rata"
+        "Peringkat", "Instruktur", "Mata Ajar", "Nama Diklat", "Nama Unit", "Tahun", "Rata-Rata"
     ]],
     use_container_width=True,
     height=500     
