@@ -25,7 +25,6 @@ if unit_kerja != "Semua":
 
 # Tampilkan judul
 st.title("📊 Dashboard Penilaian Instruktur")
-st.subheader("🎖️ Ranking Instruktur Berdasarkan Nilai Tertinggi")
 
 if not filtered_df.empty:
     # Urutkan dan tambahkan kolom peringkat
