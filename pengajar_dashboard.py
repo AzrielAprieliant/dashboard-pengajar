@@ -42,7 +42,7 @@ if not filtered_df.empty:
     top_instruktur.insert(0, "Peringkat", top_instruktur.index)
 
     # Tampilkan tabel
-    st.markdown(f"### 📋 Tabel Peringkat Instruktur untuk Mata Ajar: `{mata_ajar}`")
+    st.markdown(f"### 📋 Tabel Peringkat Instruktur")
     st.dataframe(top_instruktur[[
         "Peringkat", "Instruktur", "Mata Ajar", "Nama Diklat", "Nama Unit", "Rata-Rata"
     ]],
