@@ -45,6 +45,9 @@ if not filtered_df.empty:
     st.markdown(f"### 📋 Tabel Peringkat Instruktur untuk Mata Ajar: `{mata_ajar}`")
     st.dataframe(top_instruktur[[
         "Peringkat", "Instruktur", "Mata Ajar", "Nama Diklat", "Nama Unit", "Rata-Rata"
-    ]])
+    ]]
+    use_container_width=True,
+    height=500  # Atur tinggi sesuai kebutuhan (600 pixel misalnya)      
+     )
 else:
     st.warning("⚠️ Tidak ada data yang cocok dengan filter.")
