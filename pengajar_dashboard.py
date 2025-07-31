@@ -3,6 +3,10 @@ import pandas as pd
 
 st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
 
+# Tampilkan judul utama duluan
+st.title("📊 Dashboard Penilaian Instruktur")
+st.markdown("## 🎛️ Filter Data")
+
 # Load data
 df = pd.read_excel("Penilaian Gabung dengan Nama Unit.xlsx")
 
