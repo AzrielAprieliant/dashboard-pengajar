@@ -7,16 +7,9 @@ df = pd.read_excel("Penilaian Gabung dengan Nama Unit.xlsx")
 # Filter di tengah halaman
 st.markdown("## 🎛️ Filter Data")
 
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    nama_diklat = st.selectbox("📘 Pilih Nama Diklat", ["Semua"] + sorted(df["Nama Diklat"].dropna().unique().tolist()))
-
-with col2:
-    mata_ajar = st.selectbox("📖 Pilih Mata Ajar", ["Semua"] + sorted(df["Mata Ajar"].dropna().unique().tolist()))
-
-with col3:
-    unit_kerja = st.selectbox("🏢 Pilih Nama Unit", ["Semua"] + sorted(df["Nama Unit"].dropna().unique().tolist()))
+nama_diklat = st.selectbox("📘 Pilih Nama Diklat", ["Semua"] + sorted(df["Nama Diklat"].dropna().unique().tolist()))
+mata_ajar = st.selectbox("📖 Pilih Mata Ajar", ["Semua"] + sorted(df["Mata Ajar"].dropna().unique().tolist()))
+unit_kerja = st.selectbox("🏢 Pilih Nama Unit", ["Semua"] + sorted(df["Nama Unit"].dropna().unique().tolist()))
 
 # Filter data
 filtered_df = df.copy()
