@@ -3,6 +3,8 @@ import pandas as pd
 
 st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
 
+st.title("📊 Dashboard Penilaian Instruktur")
+
 # Load data
 df = pd.read_excel("Penilaian Gabung dengan Nama Unit.xlsx")
 
@@ -10,9 +12,6 @@ df = pd.read_excel("Penilaian Gabung dengan Nama Unit.xlsx")
 df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
 df.loc[df["Rata-Rata"] > 100, "Rata-Rata"] = df["Rata-Rata"] / 10000
 df["Rata-Rata"] = df["Rata-Rata"].round(2)
-
-# =================== FILTER ===================
-st.markdown("## 🎛️ Filter Data")
 
 nama_diklat = st.selectbox("📘 Pilih Nama Diklat", ["Semua"] + sorted(df["Nama Diklat"].dropna().unique().tolist()))
 df_diklat = df if nama_diklat == "Semua" else df[df["Nama Diklat"] == nama_diklat]
@@ -32,7 +31,7 @@ if mata_ajar != "Semua":
     filtered_df = filtered_df[filtered_df["Mata Ajar"] == mata_ajar]
 
 # =================== OUTPUT ===================
-st.title("📊 Dashboard Penilaian Instruktur")
+
 
 if not filtered_df.empty:
     # Ambil hanya satu mata ajar terbaik per instruktur (nilai tertinggi)
