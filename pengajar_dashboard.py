@@ -94,7 +94,7 @@ if not filtered_df.empty:
     st.dataframe(
         filtered_df[["Ranking", "Instruktur", "Mata Ajar", "Nama Diklat", "Tahun", "Unit Kerja", "Rata-Rata"]],
         use_container_width=True,
-        height=dynamic_height
+        height=500
     )
 
     # Unduh file
