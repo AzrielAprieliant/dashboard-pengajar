@@ -9,6 +9,14 @@ st.title("📊 Dashboard Penilaian Instruktur")
 # Load data
 df = pd.read_excel("Penilaian Gabung dengan Nama Unit.xlsx")
 
+# Konversi 'Rata-Rata' jadi numerik
+df["Rata-Rata"] = pd.to_numeric(df["Rata-Rata"], errors="coerce")
+
+# Perbaiki nilai yang tidak wajar (>100 diasumsikan kesalahan format, dibagi 10000)
+df.loc[df["Rata-Rata"] > 100, "Rata-Rata"] = df["Rata-Rata"] / 10000
+
+# Bulatkan ke 2 desimal
+df["Rata-Rata"] = df["Rata-Rata"].round(2)
 
 nama_diklat = st.selectbox("📘 Pilih Nama Diklat", ["Semua"] + sorted(df["Nama Diklat"].dropna().unique().tolist()))
 mata_ajar = st.selectbox("📖 Pilih Mata Ajar", ["Semua"] + sorted(df["Mata Ajar"].dropna().unique().tolist()))
