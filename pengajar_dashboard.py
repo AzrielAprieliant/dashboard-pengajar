@@ -6,8 +6,6 @@ st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sid
 # Load data
 df = pd.read_excel("Penilaian Gabung dengan Nama Unit.xlsx")
 
-# Filter di tengah halaman
-st.markdown("## 🎛️ Filter Data")
 
 nama_diklat = st.selectbox("📘 Pilih Nama Diklat", ["Semua"] + sorted(df["Nama Diklat"].dropna().unique().tolist()))
 mata_ajar = st.selectbox("📖 Pilih Mata Ajar", ["Semua"] + sorted(df["Mata Ajar"].dropna().unique().tolist()))
