@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
 st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
 st.title("📊 Dashboard Penilaian Instruktur")
@@ -40,5 +41,49 @@ if not filtered_df.empty:
     use_container_width=True,
     height=500     
      )
+    import plotly.express as px
+
+# 📊 Bar Chart - Peringkat Instruktur
+st.markdown("### 📈 Grafik Peringkat Instruktur (Bar Chart)")
+fig_bar = px.bar(
+    top_instruktur,
+    x="Instruktur",
+    y="Rata-Rata",
+    color="Rata-Rata",
+    text="Rata-Rata",
+    color_continuous_scale="Blues"
+)
+fig_bar.update_layout(xaxis_title=None, yaxis_title="Nilai Rata-Rata", plot_bgcolor="rgba(0,0,0,0)")
+st.plotly_chart(fig_bar, use_container_width=True)
+
+# 📈 Box Plot - Distribusi Nilai
+st.markdown("### 📦 Distribusi Nilai Rata-Rata (Box Plot)")
+fig_box = px.box(
+    filtered_df,
+    y="Rata-Rata",
+    points="all",  # menampilkan outlier
+    title="Distribusi Nilai Rata-Rata Instruktur"
+)
+fig_box.update_layout(plot_bgcolor="rgba(0,0,0,0)")
+st.plotly_chart(fig_box, use_container_width=True)
+
+# 📉 Line Chart - Rata-Rata Per Tahun (jika ada lebih dari 1 tahun)
+if df["Tahun"].nunique() > 1:
+    st.markdown("### 🗓️ Tren Nilai Rata-Rata per Tahun")
+    df_trend = (
+        df.groupby("Tahun")["Rata-Rata"]
+        .mean()
+        .reset_index()
+    )
+    fig_line = px.line(
+        df_trend,
+        x="Tahun",
+        y="Rata-Rata",
+        markers=True,
+        title="Rata-Rata Instruktur per Tahun"
+    )
+    fig_line.update_layout(plot_bgcolor="rgba(0,0,0,0)")
+    st.plotly_chart(fig_line, use_container_width=True)
+
 else:
     st.warning("⚠️ Tidak ada data yang cocok dengan filter.")
