@@ -7,31 +7,33 @@ st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sid
 st.markdown(
     """
     <style>
-    /* Ubah warna latar belakang utama */
+    /* Background utama putih */
     .main {
-        background-color: #f0f8ff; /* biru muda */
+        background-color: white;
     }
 
-    /* Sidebar */
+    /* Sidebar juga putih */
     section[data-testid="stSidebar"] {
-        background-color: #e6f2ff; /* biru pastel */
+        background-color: white;
     }
 
-    /* Judul dan teks umum */
+    /* Judul dan teks berwarna biru tua */
     h1, h2, h3, h4, h5, h6, .stMarkdown, .stText {
-        color: #003366;  /* biru gelap */
+        color: #003366;
     }
 
-    /* Tombol */
-    button {
+    /* Warna tombol biru */
+    button[kind="primary"] {
         background-color: #1f77b4;
         color: white;
+        border: none;
     }
 
-    /* Dataframe border dan font */
+    /* Dataframe styling */
     .stDataFrame {
-        border: 1px solid #ccc;
+        border: 1px solid #ddd;
         font-family: sans-serif;
+        font-size: 14px;
     }
     </style>
     """,
