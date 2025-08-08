@@ -3,6 +3,41 @@ import pandas as pd
 import plotly.express as px
 
 st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
+
+st.markdown(
+    """
+    <style>
+    /* Ubah warna latar belakang utama */
+    .main {
+        background-color: #f0f8ff; /* biru muda */
+    }
+
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background-color: #e6f2ff; /* biru pastel */
+    }
+
+    /* Judul dan teks umum */
+    h1, h2, h3, h4, h5, h6, .stMarkdown, .stText {
+        color: #003366;  /* biru gelap */
+    }
+
+    /* Tombol */
+    button {
+        background-color: #1f77b4;
+        color: white;
+    }
+
+    /* Dataframe border dan font */
+    .stDataFrame {
+        border: 1px solid #ccc;
+        font-family: sans-serif;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 st.title("📊 Dashboard Penilaian Instruktur")
 
 df = pd.read_excel("Penilaian Gabung dengan Nama Unit.xlsx")
