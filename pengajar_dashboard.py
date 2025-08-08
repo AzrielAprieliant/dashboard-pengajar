@@ -4,61 +4,65 @@ import plotly.express as px
 
 st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sidebar_state="collapsed")
 
-st.markdown(
-    """
-    <style>
-    /* Paksa tema light meskipun user/browsers pakai dark mode */
-    html, body, [data-testid="stAppViewContainer"] {
-        background-color: white !important;
-        color: black !important;
-    }
+st.markdown("""
+<style>
+/* ===== BACKGROUND PUTIH DASBOARD ===== */
+html, body, [data-testid="stAppViewContainer"] {
+    background-color: white !important;
+    color: black !important;
+}
+section[data-testid="stSidebar"] {
+    background-color: white !important;
+}
+h1, h2, h3, h4, h5, h6, .stMarkdown {
+    color: #003366;
+}
+button[kind="primary"] {
+    background-color: #1f77b4;
+    color: white;
+    border: none;
+}
+.stDataFrame {
+    border: 1px solid #ccc;
+    font-family: sans-serif;
+    font-size: 14px;
+}
 
-    /* Sidebar */
-    section[data-testid="stSidebar"] {
-        background-color: white !important;
-    }
+/* ===== SELECTBOX (DROPDOWN) STYLE ===== */
 
-    /* Teks dan header */
-    h1, h2, h3, h4, h5, h6, .stMarkdown {
-        color: #003366;
-    }
+/* Ukuran & padding kecil */
+div[data-baseweb="select"] {
+    font-size: 12px !important;
+    min-height: 30px !important;
+    background-color: white !important;
+    color: #003366 !important; /* teks dropdown */
+    border-radius: 5px !important;
+    border: 1px solid #1f77b4 !important;
+}
 
-    /* Tombol utama */
-    button[kind="primary"] {
-        background-color: #1f77b4;
-        color: white;
-        border: none;
-    }
-
-    /* Tabel */
-    .stDataFrame {
-        border: 1px solid #ccc;
-        font-family: sans-serif;
-        font-size: 14px;
-    }
-
-   /* Kecilkan bagian input dalam dropdown */
+/* Dropdown input area */
 div[data-baseweb="select"] > div {
     padding-top: 2px !important;
     padding-bottom: 2px !important;
     min-height: 30px !important;
-   }
+}
 
-    /* Kecilkan tinggi kotak selectbox */
-    div[data-testid="stSelectbox"] > div {
-        min-height: 30px !important;
-    }
+/* Label atas dropdown */
+label {
+    font-size: 13px !important;
+    color: #003366 !important;
+    margin-bottom: 4px;
+}
 
-    /* Kecilkan label selectbox */
-    label {
-        font-size: 14px !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-
+/* Menu dropdown saat diklik */
+ul[role="listbox"] {
+    background-color: white !important;
+    color: #003366 !important;
+    font-size: 12px;
+    border: 1px solid #1f77b4;
+}
+</style>
+""", unsafe_allow_html=True)
 st.title("📊 Dashboard Penilaian Instruktur")
 
 df = pd.read_excel("Penilaian Gabung dengan Nama Unit.xlsx")
