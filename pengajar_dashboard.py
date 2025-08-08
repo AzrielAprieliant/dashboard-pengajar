@@ -7,31 +7,32 @@ st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sid
 st.markdown(
     """
     <style>
-    /* Background utama putih */
-    .main {
-        background-color: white;
+    /* Paksa tema light meskipun user/browsers pakai dark mode */
+    html, body, [data-testid="stAppViewContainer"] {
+        background-color: white !important;
+        color: black !important;
     }
 
-    /* Sidebar juga putih */
+    /* Sidebar */
     section[data-testid="stSidebar"] {
-        background-color: white;
+        background-color: white !important;
     }
 
-    /* Judul dan teks berwarna biru tua */
-    h1, h2, h3, h4, h5, h6, .stMarkdown, .stText {
+    /* Teks dan header */
+    h1, h2, h3, h4, h5, h6, .stMarkdown {
         color: #003366;
     }
 
-    /* Warna tombol biru */
+    /* Tombol utama */
     button[kind="primary"] {
         background-color: #1f77b4;
         color: white;
         border: none;
     }
 
-    /* Dataframe styling */
+    /* Tabel */
     .stDataFrame {
-        border: 1px solid #ddd;
+        border: 1px solid #ccc;
         font-family: sans-serif;
         font-size: 14px;
     }
@@ -39,6 +40,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 
 st.title("📊 Dashboard Penilaian Instruktur")
 
