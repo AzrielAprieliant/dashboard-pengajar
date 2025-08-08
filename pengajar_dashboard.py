@@ -37,12 +37,12 @@ st.markdown(
         font-size: 14px;
     }
 
-    /* Kecilkan tampilan SELECTBOX */
-    div[data-testid="stSelectbox"] {
-        font-size: 14px !important;
-        padding: 0.2rem !important;
-        margin-bottom: 0.5rem !important;
-    }
+   /* Kecilkan bagian input dalam dropdown */
+div[data-baseweb="select"] > div {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+    min-height: 30px !important;
+   }
 
     /* Kecilkan tinggi kotak selectbox */
     div[data-testid="stSelectbox"] > div {
