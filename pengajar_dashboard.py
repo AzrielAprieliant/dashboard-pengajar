@@ -36,6 +36,23 @@ st.markdown(
         font-family: sans-serif;
         font-size: 14px;
     }
+
+    /* Kecilkan tampilan SELECTBOX */
+    div[data-testid="stSelectbox"] {
+        font-size: 14px !important;
+        padding: 0.2rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    /* Kecilkan tinggi kotak selectbox */
+    div[data-testid="stSelectbox"] > div {
+        min-height: 30px !important;
+    }
+
+    /* Kecilkan label selectbox */
+    label {
+        font-size: 14px !important;
+    }
     </style>
     """,
     unsafe_allow_html=True
