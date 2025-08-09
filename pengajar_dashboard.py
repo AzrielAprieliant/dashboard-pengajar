@@ -25,14 +25,12 @@ button[kind="primary"] {
 .stDataFrame {
     border: 1px solid #ccc;
     font-family: sans-serif;
-    font-size: 14px;
 }
 
 /* ===== SELECTBOX (DROPDOWN) STYLE ===== */
 
 /* Ukuran & padding kecil */
 div[data-baseweb="select"] {
-    font-size: 12px !important;
     min-height: 30px !important;
     background-color: white !important;
     color: #003366 !important; /* teks dropdown */
@@ -49,7 +47,6 @@ div[data-baseweb="select"] > div {
 
 /* Label atas dropdown */
 label {
-    font-size: 13px !important;
     color: #003366 !important;
     margin-bottom: 4px;
 }
@@ -58,7 +55,6 @@ label {
 ul[role="listbox"] {
     background-color: white !important;
     color: #003366 !important;
-    font-size: 12px;
     border: 1px solid #1f77b4;
 }
 </style>
