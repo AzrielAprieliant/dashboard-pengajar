@@ -6,7 +6,6 @@ st.set_page_config(page_title="Dashboard Instruktur", layout="wide", initial_sid
 
 st.markdown("""
 <style>
-/* ===== BACKGROUND PUTIH DASBOARD ===== */
 html, body, [data-testid="stAppViewContainer"] {
     background-color: white !important;
     color: black !important;
@@ -27,9 +26,6 @@ button[kind="primary"] {
     font-family: sans-serif;
 }
 
-/* ===== SELECTBOX (DROPDOWN) STYLE ===== */
-
-/* Ukuran & padding kecil */
 div[data-baseweb="select"] {
     min-height: 30px !important;
     background-color: white !important;
@@ -38,20 +34,18 @@ div[data-baseweb="select"] {
     border: 1px solid #1f77b4 !important;
 }
 
-/* Dropdown input area */
 div[data-baseweb="select"] > div {
     padding-top: 2px !important;
     padding-bottom: 2px !important;
     min-height: 30px !important;
 }
 
-/* Label atas dropdown */
+
 label {
     color: #003366 !important;
     margin-bottom: 4px;
 }
 
-/* Menu dropdown saat diklik */
 ul[role="listbox"] {
     background-color: white !important;
     color: #003366 !important;
@@ -99,7 +93,6 @@ if not filtered_df.empty:
      )
     import plotly.express as px
 
-# 📊 Bar Chart - Peringkat Instruktur
 st.markdown("### 📈 Grafik Peringkat Instruktur (Bar Chart)")
 fig_bar = px.bar(
     top_instruktur,
@@ -112,18 +105,16 @@ fig_bar = px.bar(
 fig_bar.update_layout(xaxis_title=None, yaxis_title="Nilai Rata-Rata", plot_bgcolor="rgba(0,0,0,0)")
 st.plotly_chart(fig_bar, use_container_width=True)
 
-# 📈 Box Plot - Distribusi Nilai
 st.markdown("### 📦 Distribusi Nilai Rata-Rata (Box Plot)")
 fig_box = px.box(
     filtered_df,
     y="Rata-Rata",
-    points="all",  # menampilkan outlier
+    points="all",  
     title="Distribusi Nilai Rata-Rata Instruktur"
 )
 fig_box.update_layout(plot_bgcolor="rgba(0,0,0,0)")
 st.plotly_chart(fig_box, use_container_width=True)
 
-# 📉 Line Chart - Rata-Rata Per Tahun (jika ada lebih dari 1 tahun)
 if df["Tahun"].nunique() > 1:
     st.markdown("### 🗓️ Tren Nilai Rata-Rata per Tahun")
     df_trend = (
